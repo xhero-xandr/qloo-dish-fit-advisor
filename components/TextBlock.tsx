@@ -20,7 +20,7 @@ export function TextBlock({ text, highlighted, copyable }: { text: string; highl
               setTimeout(() => setCopied(false), 1500);
             });
           }}
-          className="absolute right-3 top-3 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-600 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+          className="no-print absolute right-3 top-3 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-600 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
         >
           {copied ? "Copied" : "Copy"}
         </button>
