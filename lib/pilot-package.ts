@@ -7,6 +7,7 @@ export interface VenueCandidate {
   priceLevel?: number | null;
   description?: string;
   website?: string;
+  imageUrl?: string;
   vibeTags: string[];
   demographics?: DemographicsResult;
 }
@@ -14,13 +15,38 @@ export interface VenueCandidate {
 export interface PilotPackage {
   concept: string;
   city: string;
+  matchedTag?: { id: string; name: string; type: string };
   resolvedTags: { id: string; name: string; type: string }[];
   venues: VenueCandidate[];
+  aggregateDemographics?: DemographicsResult;
   audienceProfile: string;
   tastingBrief: string;
   pilotPlan: string[];
   ownerLetter: string;
   limitations: string[];
+}
+
+const AGE_BUCKETS = ["24_and_younger", "25_to_29", "30_to_34", "35_to_44", "45_to_54", "55_and_older"] as const;
+
+/** Average per-venue affinity scores into one aggregate audience profile for the hero chart. */
+function aggregateDemographics(venues: VenueCandidate[]): DemographicsResult | undefined {
+  const withDemo = venues.filter((v) => v.demographics);
+  if (withDemo.length === 0) return undefined;
+
+  const age: Record<string, number> = {};
+  for (const bucket of AGE_BUCKETS) {
+    const values = withDemo.map((v) => v.demographics?.age?.[bucket] ?? 0);
+    age[bucket] = values.reduce((a, b) => a + b, 0) / values.length;
+  }
+  const maleValues = withDemo.map((v) => v.demographics?.gender?.male ?? 0);
+  const femaleValues = withDemo.map((v) => v.demographics?.gender?.female ?? 0);
+  return {
+    age,
+    gender: {
+      male: maleValues.reduce((a, b) => a + b, 0) / maleValues.length,
+      female: femaleValues.reduce((a, b) => a + b, 0) / femaleValues.length,
+    },
+  };
 }
 
 function describeDemographics(demo?: DemographicsResult): string {
@@ -140,6 +166,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
         priceLevel: p.properties?.price_level ?? null,
         description: p.properties?.short_description ?? p.properties?.description,
         website: p.properties?.website,
+        imageUrl: p.properties?.image?.url,
         vibeTags: (p.tags ?? []).slice(0, 6).map((t) => t.name),
         demographics: demo,
       };
@@ -197,8 +224,10 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
   return {
     concept,
     city,
+    matchedTag: places.length > 0 ? primaryTag : undefined,
     resolvedTags: candidateTags,
     venues,
+    aggregateDemographics: aggregateDemographics(venues),
     audienceProfile,
     tastingBrief,
     pilotPlan,
