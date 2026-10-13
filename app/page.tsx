@@ -229,11 +229,7 @@ export default function Home() {
 
         {results.length > 0 && !loading && (
           <div className="print-surface mt-10 flex flex-col gap-8">
-            {results.length > 1 && (
-              <div className="no-print">
-                <ComparisonSummary results={results} />
-              </div>
-            )}
+            {results.length > 1 && <ComparisonSummary results={results} />}
 
             {results.length > 1 && (
               <div className="no-print flex flex-wrap gap-2 border-b border-zinc-200 pb-3 dark:border-zinc-800">

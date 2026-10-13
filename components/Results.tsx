@@ -93,9 +93,11 @@ export function Results({ result }: { result: PilotPackage }) {
         </ol>
       </Section>
 
-      <Section title="Venue owner outreach letter">
-        <TextBlock text={result.ownerLetter} highlighted copyable />
-      </Section>
+      <div className="no-print">
+        <Section title="Venue owner outreach letter">
+          <TextBlock text={result.ownerLetter} highlighted copyable />
+        </Section>
+      </div>
     </div>
   );
 }
