@@ -8,20 +8,52 @@ if (!API_KEY && process.env.NODE_ENV !== "test") {
   console.warn("QLOO_API_KEY is not set — Qloo calls will fail.");
 }
 
+// The hackathon key is rate-limited at the account level (Qloo's own response
+// headers report `x-second-ratelimit-limit: 5`), shared across every request
+// this server makes, no matter how many browser tabs or concurrent city
+// comparisons triggered them. A single multi-tag concept lookup alone can fire
+// 3-4 calls in a burst, so every outbound call is serialized through one
+// module-level queue with spacing, instead of trusting caller-side Promise.all
+// to behave. One 429 retry (with a short backoff) covers the rare race where
+// another request slips into the same window.
+const MIN_SPACING_MS = 260; // ~3.8 req/s, safely under the 5 req/s cap
+let requestChain: Promise<void> = Promise.resolve();
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function scheduleRequestSlot(): Promise<void> {
+  const slot = requestChain.then(() => sleep(MIN_SPACING_MS));
+  requestChain = slot;
+  return slot;
+}
+
 async function qlooGet<T>(path: string, params: Record<string, string | number | boolean | undefined>): Promise<T> {
   const url = new URL(path, BASE_URL);
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
-  const res = await fetch(url, {
-    headers: { "X-Api-Key": API_KEY ?? "" },
-    cache: "no-store",
-  });
-  if (!res.ok) {
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await scheduleRequestSlot();
+    const res = await fetch(url, {
+      headers: { "X-Api-Key": API_KEY ?? "" },
+      cache: "no-store",
+    });
+    if (res.ok) return res.json() as Promise<T>;
+
+    if (res.status === 429) {
+      if (attempt === 0) {
+        await sleep(1100);
+        continue;
+      }
+      throw new Error("Qloo rate limit hit (429) repeatedly — the shared hackathon key allows only ~5 requests/second. Try fewer cities at once, or retry in a few seconds.");
+    }
     const body = await res.text().catch(() => "");
     throw new Error(`Qloo API ${res.status} on ${path}: ${body.slice(0, 300)}`);
   }
-  return res.json() as Promise<T>;
+  throw new Error("Qloo API request failed after retry.");
 }
 
 export interface QlooTag {

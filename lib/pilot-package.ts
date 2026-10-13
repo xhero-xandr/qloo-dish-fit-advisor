@@ -133,14 +133,30 @@ function extractKeywords(concept: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 2 && !STOPWORDS.has(w));
-  return Array.from(new Set(words));
+  // Cap the number of keywords: each one is a separate Qloo API call, and the event
+  // key has a shared rate limit — a long concept phrase shouldn't fan out into a
+  // dozen requests. The first few words usually carry the cuisine/dish signal anyway.
+  return Array.from(new Set(words)).slice(0, 3);
+}
+
+function isRateLimitError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("429");
 }
 
 export async function buildPilotPackage(concept: string, city: string): Promise<PilotPackage> {
   const limitations: string[] = [];
 
   const queries = [concept, ...extractKeywords(concept)];
-  const tagResults = await Promise.all(queries.map((q) => findTags(q, 8).catch(() => [])));
+  const tagResults = await Promise.all(
+    queries.map(async (q) => {
+      try {
+        return await findTags(q, 8);
+      } catch (error) {
+        if (isRateLimitError(error)) throw error;
+        return [];
+      }
+    })
+  );
   const candidateTags = Array.from(
     new Map(tagResults.flat().map((t) => [t.id, t])).values()
   );
@@ -154,7 +170,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
   let primaryTag = rankedTags[0];
   const triedTagNames: string[] = [];
 
-  for (const tag of rankedTags.slice(0, 5)) {
+  for (const tag of rankedTags.slice(0, 4)) {
     triedTagNames.push(tag.name);
     try {
       const found = await findPlacesByTags([tag.id], city, 8);
@@ -165,7 +181,8 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
         primaryTag = tag;
         break;
       }
-    } catch {
+    } catch (error) {
+      if (isRateLimitError(error)) throw error;
       // try the next candidate tag
     }
   }
@@ -176,13 +193,14 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
     );
   }
 
-  const topPlaces = places.slice(0, 5);
+  const topPlaces = places.slice(0, 4);
   const venues: VenueCandidate[] = await Promise.all(
     topPlaces.map(async (p) => {
       let demo: DemographicsResult | undefined;
       try {
         demo = await audienceDemographics(p.entity_id);
-      } catch {
+      } catch (error) {
+        if (isRateLimitError(error)) throw error;
         // demographics are best-effort; omit on failure
       }
       return {

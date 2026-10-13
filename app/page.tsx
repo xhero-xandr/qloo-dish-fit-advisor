@@ -95,30 +95,49 @@ export default function Home() {
     }
   }
 
+  // Cities are analyzed with limited concurrency rather than all at once: each
+  // city already fires several Qloo calls internally, and the hackathon API key
+  // shares one rate limit across every request this app makes, so comparing many
+  // cities in full parallel can trip a 429. Results stream in as each finishes.
+  const CITY_CONCURRENCY = 2;
+
+  async function analyzeOneCity(c: string, cty: string): Promise<CityResult> {
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concept: c, city: cty }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Request failed");
+      return { city: cty, data };
+    } catch (err) {
+      return { city: cty, error: err instanceof Error ? err.message : "Unknown error" };
+    }
+  }
+
   async function runComparison(c: string, cities: string[]) {
     setLoading(true);
     setError(null);
     setResults([]);
     setActiveCity(null);
     try {
-      const settled = await Promise.all(
-        cities.map(async (cty): Promise<CityResult> => {
-          try {
-            const res = await fetch("/api/analyze", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ concept: c, city: cty }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error ?? "Request failed");
-            return { city: cty, data };
-          } catch (err) {
-            return { city: cty, error: err instanceof Error ? err.message : "Unknown error" };
+      const queue = [...cities];
+      let firstSet = false;
+      async function worker() {
+        while (queue.length > 0) {
+          const cty = queue.shift();
+          if (!cty) return;
+          const r = await analyzeOneCity(c, cty);
+          setResults((prev) => [...prev, r]);
+          if (!firstSet && r.data) {
+            firstSet = true;
+            setActiveCity(r.city);
           }
-        })
-      );
-      setResults(settled);
-      setActiveCity(settled.find((r) => r.data)?.city ?? settled[0]?.city ?? null);
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(CITY_CONCURRENCY, cities.length) }, worker));
+      setActiveCity((current) => current ?? cities[0] ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -276,7 +295,11 @@ export default function Home() {
                     }`}
                   >
                     {r.city}
-                    {r.error && <span className="ml-1 text-red-400">⚠</span>}
+                    {r.error && (
+                      <span className="ml-1 text-red-400" title={r.error}>
+                        ⚠
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -370,26 +393,35 @@ function ComparisonSummary({ results }: { results: CityResult[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {stats.map((s) => (
-              <tr key={s.city} className={winner?.city === s.city ? "bg-emerald-50/60 dark:bg-emerald-950/30" : undefined}>
-                <td className="px-4 py-2.5 font-medium">
-                  {s.city}
-                  {winner?.city === s.city && (
-                    <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      BEST FIT
-                    </span>
-                  )}
-                </td>
-                <td className={`px-4 py-2.5 ${s.venueCount === maxVenues && maxVenues > 0 ? "font-semibold" : ""}`}>
-                  {s.error ? "—" : s.venueCount}
-                </td>
-                <td className={`px-4 py-2.5 ${s.avgRating === maxRating && maxRating > 0 ? "font-semibold" : ""}`}>
-                  {s.avgRating !== null ? `★ ${s.avgRating.toFixed(1)}` : "—"}
-                </td>
-                <td className="px-4 py-2.5">{dominantAgeLabel(s.demo)}</td>
-                <td className="px-4 py-2.5">{genderLeanLabel(s.demo)}</td>
-              </tr>
-            ))}
+            {stats.map((s) =>
+              s.error ? (
+                <tr key={s.city}>
+                  <td className="px-4 py-2.5 font-medium">{s.city}</td>
+                  <td colSpan={4} className="px-4 py-2.5 text-xs text-red-500" title={s.error}>
+                    ⚠ {s.error}
+                  </td>
+                </tr>
+              ) : (
+                <tr key={s.city} className={winner?.city === s.city ? "bg-emerald-50/60 dark:bg-emerald-950/30" : undefined}>
+                  <td className="px-4 py-2.5 font-medium">
+                    {s.city}
+                    {winner?.city === s.city && (
+                      <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        BEST FIT
+                      </span>
+                    )}
+                  </td>
+                  <td className={`px-4 py-2.5 ${s.venueCount === maxVenues && maxVenues > 0 ? "font-semibold" : ""}`}>
+                    {s.venueCount}
+                  </td>
+                  <td className={`px-4 py-2.5 ${s.avgRating === maxRating && maxRating > 0 ? "font-semibold" : ""}`}>
+                    {s.avgRating !== null ? `★ ${s.avgRating.toFixed(1)}` : "—"}
+                  </td>
+                  <td className="px-4 py-2.5">{dominantAgeLabel(s.demo)}</td>
+                  <td className="px-4 py-2.5">{genderLeanLabel(s.demo)}</td>
+                </tr>
+              )
+            )}
           </tbody>
         </table>
       </div>
