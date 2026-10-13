@@ -54,6 +54,22 @@ All calls go through the official hackathon endpoint
 only (see `lib/qloo.ts`). No personal data is ever sent to Qloo — only the
 free-text concept and city the user types.
 
+## API rate limits
+
+The hackathon key is capped at **5 requests/second and 10,000/month**
+(confirmed from Qloo's own `x-second-ratelimit-limit` / `x-month-ratelimit-limit`
+response headers), shared across every request this server makes — regardless
+of how many browser tabs or concurrent city comparisons triggered them.
+
+Rather than fight that with an artificial request budget, `lib/qloo.ts`
+serializes every outbound Qloo call through one spaced queue and retries on
+429 (honoring the `x-second-ratelimit-reset` header when present, up to 12
+attempts) instead of failing fast. An analysis is allowed to take longer than
+usual under load; the reverse proxy in front of this app is configured with
+an 86400s read timeout specifically so a slow-but-patient retry never gets
+cut off upstream. If Qloo raises this key's limits for the event, the app
+gets faster automatically — no code change needed.
+
 ## Known limitations
 
 - Venue ordering within a matched tag is by business rating, not by a true
