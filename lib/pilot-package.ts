@@ -76,27 +76,27 @@ function aggregateRegionInsights(places: QlooPlace[]): RegionInsight[] {
 }
 
 function describeDemographics(demo?: DemographicsResult): string {
-  if (!demo) return "Демографические данные по этому заведению недоступны.";
+  if (!demo) return "No demographic data available for this venue.";
 
   const ageEntries = Object.entries(demo.age ?? {});
   const topAge = ageEntries.sort((a, b) => b[1] - a[1])[0];
   const genderLean = (demo.gender?.male ?? 0) - (demo.gender?.female ?? 0);
 
   const ageLabel: Record<string, string> = {
-    "24_and_younger": "до 24 лет",
-    "25_to_29": "25–29 лет",
-    "30_to_34": "30–34 лет",
-    "35_to_44": "35–44 лет",
-    "45_to_54": "45–54 лет",
-    "55_and_older": "55+ лет",
+    "24_and_younger": "24 and younger",
+    "25_to_29": "25–29",
+    "30_to_34": "30–34",
+    "35_to_44": "35–44",
+    "45_to_54": "45–54",
+    "55_and_older": "55 and older",
   };
 
   const genderText =
-    genderLean > 0.15 ? "с заметным перекосом в мужскую аудиторию"
-    : genderLean < -0.15 ? "с заметным перекосом в женскую аудиторию"
-    : "со сбалансированной аудиторией по полу";
+    genderLean > 0.15 ? "with a notable skew toward a male audience"
+    : genderLean < -0.15 ? "with a notable skew toward a female audience"
+    : "with a roughly balanced audience by gender";
 
-  return `Сильнее всего выражена affinity в группе ${ageLabel[topAge?.[0]] ?? "смешанной"} (score ${topAge?.[1]?.toFixed(2) ?? "н/д"}), ${genderText}.`;
+  return `Strongest affinity in the ${ageLabel[topAge?.[0]] ?? "mixed"} age group (score ${topAge?.[1]?.toFixed(2) ?? "n/a"}), ${genderText}.`;
 }
 
 /**
@@ -146,7 +146,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
   );
 
   if (candidateTags.length === 0) {
-    throw new Error(`Qloo не нашёл тег, похожий на "${concept}". Попробуйте переформулировать концепцию (например, конкретную кухню или тип блюда).`);
+    throw new Error(`Qloo couldn't find a taste tag close to "${concept}". Try rephrasing the concept (e.g. a specific cuisine or dish type).`);
   }
 
   const rankedTags = rankTagsForPlaceMatching(candidateTags);
@@ -172,7 +172,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
 
   if (places.length === 0) {
     limitations.push(
-      `В городе "${city}" Qloo не нашёл заведений ни по одному из тегов, связанных с "${concept}" (пробовали: ${triedTagNames.join(", ")}). Возможно, город указан неточно или ниша слишком узкая для этого региона.`
+      `Qloo found no venues in "${city}" for any of the tags related to "${concept}" (tried: ${triedTagNames.join(", ")}). The city may be misspelled, or the niche may be too narrow for this region.`
     );
   }
 
@@ -207,54 +207,54 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
   const audienceProfile =
     demoLines.length > 0
       ? [
-          `Концепция "${concept}" в городе ${city} сопоставлена с тегом Qloo "${primaryTag?.name}" (${primaryTag?.type}).`,
-          `На основе аудиторий ${venues.length} близких по вкусу заведений:`,
+          `The concept "${concept}" in ${city} matched Qloo tag "${primaryTag?.name}" (${primaryTag?.type}).`,
+          `Based on the audiences of ${venues.length} taste-matched venue${venues.length === 1 ? "" : "s"}:`,
           ...demoLines,
         ].join("\n")
-      : `Недостаточно данных для построения демографического профиля аудитории по концепции "${concept}" в городе ${city}.`;
+      : `Not enough data to build an audience demographic profile for "${concept}" in ${city}.`;
 
   const vibeWords = Array.from(new Set(venues.flatMap((v) => v.vibeTags))).slice(0, 10);
   const regionInsights = aggregateRegionInsights(topPlaces);
 
   const tastingBrief = [
-    `Концепция дегустации: "${concept}"`,
-    `Ориентир по атмосфере (из тегов похожих заведений): ${vibeWords.length > 0 ? vibeWords.join(", ") : "данных недостаточно"}.`,
+    `Tasting concept: "${concept}"`,
+    `Atmosphere cues (from tags of taste-matched venues): ${vibeWords.length > 0 ? vibeWords.join(", ") : "not enough data"}.`,
     regionInsights.length > 0
-      ? `За что реально хвалят заведения этой ниши в регионе (по частоте упоминаний в отзывах): ${regionInsights.slice(0, 6).map((r) => r.keyword).join(", ")}. Это не жалобы на конкретные блюда — Qloo не отдаёт текст отзывов, только агрегированные упоминания — но ориентир, что уже ценит местная аудитория.`
-      : `Данных по упоминаниям в отзывах по этой нише в регионе недостаточно.`,
-    `Формат: закрытая дегустация на 15–25 гостей, подборка 3–5 позиций меню, сбор обратной связи по карточкам оценки.`,
-    `Цель: проверить product-market fit концепции до вложений в постоянное меню или открытие точки.`,
+      ? `What this niche's venues actually get praised for in this region (by review-keyword mention frequency): ${regionInsights.slice(0, 6).map((r) => r.keyword).join(", ")}. This isn't complaint data — Qloo doesn't expose review text, only aggregated mention counts — but it's a signal for what the local audience already values.`
+      : `Not enough review-keyword data for this niche in this region.`,
+    `Format: a closed tasting for 15–25 guests, a curated 3–5 item menu, feedback collected via rating cards.`,
+    `Goal: validate product-market fit before investing in a permanent menu or a new location.`,
   ].join("\n");
 
   const pilotPlan = [
-    "Неделя 1: зафиксировать финальный состав дегустационного меню (3–5 позиций) и критерии успеха пилота.",
-    `Неделя 1–2: связаться с ${venues.length > 0 ? venues.slice(0, 2).map((v) => v.name).join(" и ") : "выбранной площадкой"} по поводу разового вечера/коллаборации.`,
-    "Неделя 2: подготовить короткую анкету для гостей (вкус, цена, повторная покупка) и промо-сообщение для аудитории площадки.",
-    "Неделя 3: провести дегустационный вечер, собрать анкеты и данные по продажам/расходу порций.",
-    "Неделя 4: разбор результатов — решение идти в постоянное меню, пересобрать концепцию или сменить площадку/аудиторию.",
+    "Week 1: lock the final tasting menu (3–5 items) and define pilot success criteria.",
+    `Week 1–2: reach out to ${venues.length > 0 ? venues.slice(0, 2).map((v) => v.name).join(" and ") : "the chosen venue"} about a one-off tasting night or collaboration.`,
+    "Week 2: prepare a short guest questionnaire (taste, price, repeat purchase) and a promo message for the venue's audience.",
+    "Week 3: run the tasting night, collect questionnaires and sales/portion data.",
+    "Week 4: review results — decide whether to go to a permanent menu, revise the concept, or switch venue/audience.",
   ];
 
   const bestVenue = venues[0];
   const ownerLetter = bestVenue
     ? [
         bestVenue.phone
-          ? `Прямой контакт (звонок обычно эффективнее письма — меньше риск улететь в спам): ${bestVenue.phone}`
-          : `Прямой телефон не найден в данных Qloo — используйте сайт заведения.`,
+          ? `Direct contact (a call usually beats email — less risk of landing in spam): ${bestVenue.phone}`
+          : `No direct phone number found in Qloo's data — use the venue's website instead.`,
         "",
-        `Тема: предложение коллаборации — дегустационный вечер "${concept}"`,
+        `Subject: collaboration proposal — tasting night for "${concept}"`,
         "",
-        `Здравствуйте!`,
+        `Hi,`,
         "",
-        `Мы работаем над концепцией "${concept}" и, судя по данным о вкусах аудитории, ${bestVenue.name} выглядит одной из наиболее подходящих площадок в ${city} — ваше заведение близко по атмосфере и вкусовому профилю (${bestVenue.vibeTags.slice(0, 3).join(", ") || "совпадающая ниша"}).`,
+        `We're developing a concept for "${concept}" and, based on audience taste data, ${bestVenue.name} looks like one of the strongest-fit venues in ${city} — your place is close in atmosphere and taste profile (${bestVenue.vibeTags.slice(0, 3).join(", ") || "a matching niche"}).`,
         "",
-        `Предлагаем провести разовый дегустационный вечер на вашей площадке: мы берём на себя меню и подачу, вы — зал и вашу аудиторию. Для вас это дополнительный повод привлечь гостей в непиковый день без риска и вложений в новое меню.`,
+        `We'd like to propose a one-off tasting night at your venue: we handle the menu and service, you provide the space and your audience. For you, it's an extra draw on a slower night, with no risk or investment in a new menu.`,
         "",
-        `Готовы обсудить дату и формат в удобное для вас время.`,
+        `Happy to discuss a date and format at your convenience.`,
         "",
-        `С уважением,`,
-        `[Ваше имя]`,
+        `Best,`,
+        `[Your name]`,
       ].join("\n")
-    : `Недостаточно данных о площадках в ${city}, чтобы подготовить письмо — уточните город или концепцию.`;
+    : `Not enough venue data in ${city} to draft a letter — try a different city or concept.`;
 
   return {
     concept,
