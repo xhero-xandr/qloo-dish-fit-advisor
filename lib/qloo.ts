@@ -136,14 +136,27 @@ export async function audienceDemographics(entityId: string): Promise<Demographi
   return data.results?.demographics?.[0]?.query;
 }
 
-export interface TasteSignalResult {
-  entity: { entity_id: string; name: string };
-  affinity?: number;
+export interface CrossDomainEntity {
+  name: string;
+  entity_id: string;
+  subtype: string;
+  properties?: {
+    image?: { url?: string };
+    genres?: string[];
+    short_description?: string;
+    description?: string;
+  };
 }
 
-/** Entities (other places/brands) that overlap in taste with the given signal tags — used for "audience also likes" framing. */
-export async function recommendByTags(tagIds: string[], targetType: string, take = 5): Promise<unknown[]> {
-  const data = await qlooGet<{ results: { entities: unknown[] } }>("/v2/insights", {
+/**
+ * Entities in a *different* domain (brands, TV shows, ...) that the same
+ * taste-signal audience tends toward — this is what actually makes the app
+ * use Qloo as a cross-domain taste *graph* rather than a single-category
+ * lookup table. No other data source can answer "what do izakaya fans also
+ * watch/buy" the way this can.
+ */
+export async function recommendByTags(tagIds: string[], targetType: string, take = 5): Promise<CrossDomainEntity[]> {
+  const data = await qlooGet<{ results: { entities: CrossDomainEntity[] } }>("/v2/insights", {
     "filter.type": targetType,
     "signal.interests.tags": tagIds.join(","),
     take,

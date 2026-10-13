@@ -21,6 +21,17 @@ export interface RegionInsight {
   mentions: number;
 }
 
+export interface CulturalSignalItem {
+  name: string;
+  imageUrl?: string;
+  subtitle?: string;
+}
+
+export interface CulturalAffinity {
+  brands: CulturalSignalItem[];
+  tvShows: CulturalSignalItem[];
+}
+
 export interface PilotPackage {
   concept: string;
   city: string;
@@ -29,6 +40,7 @@ export interface PilotPackage {
   venues: VenueCandidate[];
   aggregateDemographics?: Demographics;
   regionInsights: RegionInsight[];
+  culturalAffinity?: CulturalAffinity;
   audienceProfile: string;
   tastingBrief: string;
   pilotPlan: string[];

@@ -1,3 +1,4 @@
+import { CulturalAffinityPanel } from "./CulturalAffinity";
 import { DemographicsChart } from "./DemographicsChart";
 import { Section } from "./Section";
 import { TextBlock } from "./TextBlock";
@@ -63,6 +64,15 @@ export function Results({ result }: { result: PilotPackage }) {
               </span>
             ))}
           </div>
+        </Section>
+      )}
+
+      {result.culturalAffinity && (
+        <Section
+          title="Cultural affinity (beyond food)"
+          subtitle="Cross-domain Qloo graph signal — same audience, different categories"
+        >
+          <CulturalAffinityPanel data={result.culturalAffinity} />
         </Section>
       )}
 

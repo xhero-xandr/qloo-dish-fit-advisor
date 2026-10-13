@@ -1,4 +1,4 @@
-import { findTags, findPlacesByTags, audienceDemographics, type QlooPlace, type DemographicsResult } from "./qloo";
+import { findTags, findPlacesByTags, audienceDemographics, recommendByTags, type QlooPlace, type DemographicsResult, type CrossDomainEntity } from "./qloo";
 
 export interface VenueCandidate {
   name: string;
@@ -18,6 +18,17 @@ export interface RegionInsight {
   mentions: number;
 }
 
+export interface CulturalSignalItem {
+  name: string;
+  imageUrl?: string;
+  subtitle?: string;
+}
+
+export interface CulturalAffinity {
+  brands: CulturalSignalItem[];
+  tvShows: CulturalSignalItem[];
+}
+
 export interface PilotPackage {
   concept: string;
   city: string;
@@ -26,6 +37,7 @@ export interface PilotPackage {
   venues: VenueCandidate[];
   aggregateDemographics?: DemographicsResult;
   regionInsights: RegionInsight[];
+  culturalAffinity?: CulturalAffinity;
   audienceProfile: string;
   tastingBrief: string;
   pilotPlan: string[];
@@ -73,6 +85,35 @@ function aggregateRegionInsights(places: QlooPlace[]): RegionInsight[] {
     .map(([keyword, mentions]) => ({ keyword, mentions }))
     .sort((a, b) => b.mentions - a.mentions)
     .slice(0, 12);
+}
+
+function toCulturalSignalItems(entities: CrossDomainEntity[]): CulturalSignalItem[] {
+  return entities.map((e) => ({
+    name: e.name,
+    imageUrl: e.properties?.image?.url,
+    subtitle: e.properties?.genres?.slice(0, 2).join(", "),
+  }));
+}
+
+/**
+ * Cross-domain taste signal: what the *same* audience (by the matched cuisine
+ * tag) tends toward in brands and TV shows. This is the part of the product
+ * that genuinely uses Qloo's cross-domain graph rather than a single-category
+ * lookup — no review site or menu database can answer "what do izakaya fans
+ * also watch/buy".
+ */
+async function fetchCulturalAffinity(tagId: string): Promise<CulturalAffinity | undefined> {
+  try {
+    const [brands, tvShows] = await Promise.all([
+      recommendByTags([tagId], "urn:entity:brand", 5),
+      recommendByTags([tagId], "urn:entity:tv_show", 5),
+    ]);
+    if (brands.length === 0 && tvShows.length === 0) return undefined;
+    return { brands: toCulturalSignalItems(brands), tvShows: toCulturalSignalItems(tvShows) };
+  } catch {
+    // best-effort enrichment; a failure here shouldn't break the whole pilot package
+    return undefined;
+  }
 }
 
 function describeDemographics(demo?: DemographicsResult): string {
@@ -233,6 +274,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
 
   const vibeWords = Array.from(new Set(venues.flatMap((v) => v.vibeTags))).slice(0, 10);
   const regionInsights = aggregateRegionInsights(topPlaces);
+  const culturalAffinity = primaryTag && places.length > 0 ? await fetchCulturalAffinity(primaryTag.id) : undefined;
 
   const tastingBrief = [
     `Tasting concept: "${concept}"`,
@@ -282,6 +324,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
     venues,
     aggregateDemographics: aggregateDemographics(venues),
     regionInsights,
+    culturalAffinity,
     audienceProfile,
     tastingBrief,
     pilotPlan,
