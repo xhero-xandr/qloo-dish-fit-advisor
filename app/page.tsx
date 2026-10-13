@@ -10,6 +10,7 @@ interface Demographics {
 interface VenueCandidate {
   name: string;
   address?: string;
+  phone?: string;
   rating?: number;
   priceLevel?: number | null;
   description?: string;
@@ -19,6 +20,11 @@ interface VenueCandidate {
   demographics?: Demographics;
 }
 
+interface RegionInsight {
+  keyword: string;
+  mentions: number;
+}
+
 interface PilotPackage {
   concept: string;
   city: string;
@@ -26,6 +32,7 @@ interface PilotPackage {
   resolvedTags: { id: string; name: string; type: string }[];
   venues: VenueCandidate[];
   aggregateDemographics?: Demographics;
+  regionInsights: RegionInsight[];
   audienceProfile: string;
   tastingBrief: string;
   pilotPlan: string[];
@@ -447,6 +454,25 @@ function Results({ result }: { result: PilotPackage }) {
         </div>
       </Section>
 
+      {result.regionInsights.length > 0 && (
+        <Section
+          title="What this region's audience actually values"
+          subtitle="Aggregated review-keyword mentions across matched venues — not complaints, just what gets talked about"
+        >
+          <div className="flex flex-wrap gap-2">
+            {result.regionInsights.map((r, i) => (
+              <span
+                key={i}
+                className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
+                title={`${r.mentions} mentions`}
+              >
+                {r.keyword} <span className="text-zinc-400">× {r.mentions}</span>
+              </span>
+            ))}
+          </div>
+        </Section>
+      )}
+
       <Section title="Tasting concept brief">
         <TextBlock text={result.tastingBrief} />
       </Section>
@@ -600,16 +626,26 @@ function VenueCard({ venue, rank }: { venue: VenueCandidate; rank: number }) {
             ))}
           </div>
         )}
-        {venue.website && (
-          <a
-            href={venue.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-block text-xs font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
-          >
-            Website ↗
-          </a>
-        )}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {venue.phone && (
+            <a
+              href={`tel:${venue.phone}`}
+              className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900"
+            >
+              ☎ {venue.phone}
+            </a>
+          )}
+          {venue.website && (
+            <a
+              href={venue.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              Website ↗
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );

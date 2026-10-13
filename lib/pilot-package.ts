@@ -3,6 +3,7 @@ import { findTags, findPlacesByTags, audienceDemographics, type QlooPlace, type 
 export interface VenueCandidate {
   name: string;
   address?: string;
+  phone?: string;
   rating?: number;
   priceLevel?: number | null;
   description?: string;
@@ -12,6 +13,11 @@ export interface VenueCandidate {
   demographics?: DemographicsResult;
 }
 
+export interface RegionInsight {
+  keyword: string;
+  mentions: number;
+}
+
 export interface PilotPackage {
   concept: string;
   city: string;
@@ -19,6 +25,7 @@ export interface PilotPackage {
   resolvedTags: { id: string; name: string; type: string }[];
   venues: VenueCandidate[];
   aggregateDemographics?: DemographicsResult;
+  regionInsights: RegionInsight[];
   audienceProfile: string;
   tastingBrief: string;
   pilotPlan: string[];
@@ -47,6 +54,25 @@ function aggregateDemographics(venues: VenueCandidate[]): DemographicsResult | u
       female: femaleValues.reduce((a, b) => a + b, 0) / femaleValues.length,
     },
   };
+}
+
+/**
+ * Aggregate the review-derived keyword mentions Qloo attaches to each venue
+ * (e.g. "brisket" mentioned 184 times) across all matched venues, as a proxy
+ * for what this region's audience actually values in this niche — there is no
+ * free-text review/complaint data in the API, only these aggregated counts.
+ */
+function aggregateRegionInsights(places: QlooPlace[]): RegionInsight[] {
+  const totals = new Map<string, number>();
+  for (const p of places) {
+    for (const kw of p.properties?.keywords ?? []) {
+      totals.set(kw.name, (totals.get(kw.name) ?? 0) + kw.count);
+    }
+  }
+  return Array.from(totals.entries())
+    .map(([keyword, mentions]) => ({ keyword, mentions }))
+    .sort((a, b) => b.mentions - a.mentions)
+    .slice(0, 12);
 }
 
 function describeDemographics(demo?: DemographicsResult): string {
@@ -162,6 +188,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
       return {
         name: p.name,
         address: p.properties?.address,
+        phone: p.properties?.phone,
         rating: p.properties?.business_rating,
         priceLevel: p.properties?.price_level ?? null,
         description: p.properties?.short_description ?? p.properties?.description,
@@ -187,10 +214,14 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
       : `Недостаточно данных для построения демографического профиля аудитории по концепции "${concept}" в городе ${city}.`;
 
   const vibeWords = Array.from(new Set(venues.flatMap((v) => v.vibeTags))).slice(0, 10);
+  const regionInsights = aggregateRegionInsights(topPlaces);
 
   const tastingBrief = [
     `Концепция дегустации: "${concept}"`,
     `Ориентир по атмосфере (из тегов похожих заведений): ${vibeWords.length > 0 ? vibeWords.join(", ") : "данных недостаточно"}.`,
+    regionInsights.length > 0
+      ? `За что реально хвалят заведения этой ниши в регионе (по частоте упоминаний в отзывах): ${regionInsights.slice(0, 6).map((r) => r.keyword).join(", ")}. Это не жалобы на конкретные блюда — Qloo не отдаёт текст отзывов, только агрегированные упоминания — но ориентир, что уже ценит местная аудитория.`
+      : `Данных по упоминаниям в отзывах по этой нише в регионе недостаточно.`,
     `Формат: закрытая дегустация на 15–25 гостей, подборка 3–5 позиций меню, сбор обратной связи по карточкам оценки.`,
     `Цель: проверить product-market fit концепции до вложений в постоянное меню или открытие точки.`,
   ].join("\n");
@@ -206,6 +237,10 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
   const bestVenue = venues[0];
   const ownerLetter = bestVenue
     ? [
+        bestVenue.phone
+          ? `Прямой контакт (звонок обычно эффективнее письма — меньше риск улететь в спам): ${bestVenue.phone}`
+          : `Прямой телефон не найден в данных Qloo — используйте сайт заведения.`,
+        "",
         `Тема: предложение коллаборации — дегустационный вечер "${concept}"`,
         "",
         `Здравствуйте!`,
@@ -228,6 +263,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
     resolvedTags: candidateTags,
     venues,
     aggregateDemographics: aggregateDemographics(venues),
+    regionInsights,
     audienceProfile,
     tastingBrief,
     pilotPlan,

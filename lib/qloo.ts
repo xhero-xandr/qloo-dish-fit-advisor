@@ -53,7 +53,9 @@ export interface QlooPlace {
     geocode?: { city?: string; metro?: string; admin1_region?: string; country?: string };
     hours?: Record<string, { opens: string; closes: string; closed: boolean }[]>;
     website?: string;
+    phone?: string;
     image?: { url?: string };
+    keywords?: { name: string; count: number }[];
   };
   tags?: { id: string; name: string; type: string }[];
   popularity?: number;
