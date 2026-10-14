@@ -27,10 +27,15 @@ You type a dish/menu concept (free text) and a city. The app:
 3. For the top venues, calls `GET /v2/insights`
    (`filter.type=urn:demographics`, `signal.interests.entities`) to pull the
    age/gender affinity skew of each venue's actual audience.
-4. Assembles that evidence into: an audience profile, a shortlist of pilot
-   venues with the reasoning attached, a tasting-event concept brief, a
-   4-week pilot plan, and a ready-to-send outreach letter to the best-matched
-   venue owner.
+4. Projects the matched taste tag onto brands, TV shows, artists, and
+   podcasts, localized to the same city (`signal.location`), so the
+   cross-domain signal describes this market's audience rather than the
+   tag's global one.
+5. Assembles that evidence into: a venue shortlist (phone, website, dietary
+   badges), an aggregate audience-affinity chart, the review keywords this
+   niche gets praised for locally, and templated drafts — a tasting brief,
+   a 4-week pilot plan, and an outreach letter. The drafts are fixed
+   templates with Qloo data interpolated, not analysis in their own right.
 
 ### Why this needs Qloo, not just an LLM
 
@@ -58,13 +63,16 @@ audience data, and a plan — no sales call required.
 | Tag resolution | `GET /v2/tags` (semantic search) | Map free-text concept to Qloo's controlled taste vocabulary |
 | Venue discovery | `GET /v2/insights?filter.type=urn:entity:place` | Real venues in a city filtered by resolved taste tag(s) |
 | Audience profile | `GET /v2/insights?filter.type=urn:demographics` | Age/gender affinity skew for a specific venue's audience |
-| Cross-domain affinity | `GET /v2/insights?filter.type=urn:entity:brand\|tv_show\|artist\|podcast` with `signal.interests.tags` | What the *same* taste-signal audience tends toward in other categories entirely — brands, TV shows, artists, podcasts |
+| Cross-domain affinity | `GET /v2/insights?filter.type=urn:entity:brand\|tv_show\|artist\|podcast` with `signal.interests.tags` + `signal.location.query` | What this city's audience for the taste tag tends toward in other categories entirely — brands, TV shows, artists, podcasts |
 | Dietary signals | `tags` on each matched venue (`urn:tag:dietary_option:qloo:*`) | Vegan/vegetarian/gluten-free/halal/etc. flags Qloo already attaches to a venue, surfaced as badges |
 
 The cross-domain step is the part that actually exercises Qloo's taste
 **graph** rather than a single-category lookup: the same matched cuisine tag
 is projected onto brands, TV shows, artists, and podcasts via shared audience
-affinity, not anything derivable from a menu database or review site. See
+affinity, not anything derivable from a menu database or review site. The
+location signal matters: without it, "izakaya" in Austin returns Sapporo
+Beer and Japanese fashion labels (the tag's global audience); with it, the
+same query returns Gyu-Kaku, Momofuku, and *The Dave Chang Show*. See
 "Cultural affinity" in the app output.
 
 All calls go through the official hackathon endpoint
@@ -82,7 +90,9 @@ of how many browser tabs or concurrent city comparisons triggered them.
 Rather than fight that with an artificial request budget, `lib/qloo.ts`
 serializes every outbound Qloo call through one spaced queue and retries on
 429 (honoring the `x-second-ratelimit-reset` header when present, up to 12
-attempts) instead of failing fast. An analysis is allowed to take longer than
+attempts) instead of failing fast — unless `x-month-ratelimit-remaining` is
+0, in which case it fails immediately with a clear message, since waiting
+can't fix an exhausted monthly quota. An analysis is allowed to take longer than
 usual under load; the reverse proxy in front of this app is configured with
 an 86400s read timeout specifically so a slow-but-patient retry never gets
 cut off upstream. If Qloo raises this key's limits for the event, the app
@@ -93,15 +103,20 @@ in-memory cache (`lib/pilot-package.ts`) instead of re-querying Qloo — a
 repeated click on the same preset or a page reload doesn't spend the shared
 monthly quota again on a request that already has a live answer. The
 response is marked with `cachedAt` when this happens, and the UI discloses
-it rather than silently reusing data.
+it rather than silently reusing data. Concurrent identical requests (a
+double-submit, a second tab) join the run already in progress instead of
+starting a second full pipeline, and the API rejects inputs over 200
+(concept) / 100 (city) characters.
 
 ## Known limitations
 
 - The multi-city "Best fit" verdict is our own heuristic, not a Qloo score:
   `venues found × 2 + average rating`. More matching venues weighs more
   heavily than a slightly higher rating — a city with 3 modest-rated venues
-  can outrank a city with 2 excellent ones. This is disclosed in the UI next
-  to the verdict, not left as an unexplained badge.
+  can outrank a city with 2 excellent ones. Since at most 4 venues are kept
+  per city, any two cities that both hit that cap are separated by average
+  rating alone. This is disclosed in the UI next to the verdict, not left as
+  an unexplained badge — but it is a coarse heuristic, not a fit model.
 - Keyword extraction from a free-text concept caps at 3 keywords (plus the
   full phrase) to bound how many Qloo calls one analysis fires. For a long
   concept, later words can be dropped entirely from tag resolution — e.g.
@@ -115,14 +130,18 @@ it rather than silently reusing data.
 - Demographic data describes *group* taste affinity, not individual
   behavior — it tells you who tends to like a venue, not what any one person
   will do.
-- If a concept is too niche for a city, the pipeline tries up to 5 fallback
+- If a concept is too niche for a city, the pipeline tries up to 4 candidate
   tags before giving up; it reports which tags it tried in `limitations`
   rather than silently returning nothing or a bad guess.
-- Narrative sections (audience profile, tasting brief, pilot plan, outreach
-  letter) are filled from deterministic templates using the Qloo data above —
-  there is no LLM text-generation layer in this build. This keeps Qloo as the
-  sole source of truth and keeps the project free to run without a second
-  (paid) LLM API key.
+- Narrative sections (tasting brief, pilot plan, outreach letter) are fixed
+  templates with Qloo data interpolated — the pilot plan's steps are the
+  same for every concept, only venue names change. There is no LLM
+  text-generation layer in this build. This keeps Qloo as the sole source of
+  truth and keeps the project free to run without a second (paid) LLM API
+  key, at the cost of these sections being generic.
+- There is no per-IP throttling. The cache, in-flight dedupe, and input caps
+  limit waste, but a determined visitor firing many distinct queries can
+  still exhaust the shared monthly key (~600 full analyses).
 - Venue data is sourced from fixed-location business listings (address,
   phone, hours, rating) — the same shape as Google Places/Yelp. Food trucks,
   street carts, and pop-ups are structurally underrepresented or absent:

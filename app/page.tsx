@@ -13,7 +13,6 @@ export default function Home() {
   const [cities, setCities] = useState<string[]>([]);
   const [cityDraft, setCityDraft] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<CityResult[]>([]);
   const [activeCity, setActiveCity] = useState<string | null>(null);
 
@@ -65,31 +64,26 @@ export default function Home() {
 
   async function runComparison(c: string, cities: string[]) {
     setLoading(true);
-    setError(null);
     setResults([]);
     setActiveCity(null);
-    try {
-      const queue = [...cities];
-      let firstSet = false;
-      async function worker() {
-        while (queue.length > 0) {
-          const cty = queue.shift();
-          if (!cty) return;
-          const r = await analyzeOneCity(c, cty);
-          setResults((prev) => [...prev, r]);
-          if (!firstSet && r.data) {
-            firstSet = true;
-            setActiveCity(r.city);
-          }
+    const queue = [...cities];
+    let firstSet = false;
+    // analyzeOneCity never throws — per-city failures land in that city's result.
+    async function worker() {
+      while (queue.length > 0) {
+        const cty = queue.shift();
+        if (!cty) return;
+        const r = await analyzeOneCity(c, cty);
+        setResults((prev) => [...prev, r]);
+        if (!firstSet && r.data) {
+          firstSet = true;
+          setActiveCity(r.city);
         }
       }
-      await Promise.all(Array.from({ length: Math.min(CITY_CONCURRENCY, cities.length) }, worker));
-      setActiveCity((current) => current ?? cities[0] ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
     }
+    await Promise.all(Array.from({ length: Math.min(CITY_CONCURRENCY, cities.length) }, worker));
+    setActiveCity((current) => current ?? cities[0] ?? null);
+    setLoading(false);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -138,6 +132,7 @@ export default function Home() {
               className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
               placeholder="e.g. izakaya-style small plates"
               value={concept}
+              maxLength={200}
               onChange={(e) => setConcept(e.target.value)}
               required
             />
@@ -168,6 +163,7 @@ export default function Home() {
                 className="min-w-[140px] flex-1 bg-transparent px-1 py-1.5 text-sm outline-none"
                 placeholder={cities.length === 0 ? "Type a city and press Enter…" : "Add another…"}
                 value={cityDraft}
+                maxLength={100}
                 onChange={(e) => setCityDraft(e.target.value)}
                 onKeyDown={handleCityKeyDown}
                 onBlur={() => addCity(cityDraft)}
@@ -218,12 +214,6 @@ export default function Home() {
             </button>
           ))}
         </div>
-
-        {error && (
-          <p className="mt-8 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-            {error}
-          </p>
-        )}
 
         {loading && <LoadingSkeleton />}
 

@@ -59,6 +59,9 @@ async function qlooGet<T>(path: string, params: Record<string, string | number |
     if (res.ok) return res.json() as Promise<T>;
 
     if (res.status === 429) {
+      if (res.headers.get("x-month-ratelimit-remaining") === "0") {
+        throw new Error("Qloo monthly request quota for this API key is exhausted — retrying won't help until it resets.");
+      }
       if (attempt < MAX_RATE_LIMIT_RETRIES) {
         await sleep(retryDelayMs(res, attempt));
         continue;
@@ -156,10 +159,13 @@ export interface CrossDomainEntity {
  * lookup table. No other data source can answer "what do izakaya fans also
  * watch/buy" the way this can.
  */
-export async function recommendByTags(tagIds: string[], targetType: string, take = 5): Promise<CrossDomainEntity[]> {
+export async function recommendByTags(tagIds: string[], targetType: string, location: string, take = 5): Promise<CrossDomainEntity[]> {
+  // Without a location signal the graph answers for the tag's global audience
+  // (e.g. izakaya -> Japanese brands), which is useless for a pilot in Austin.
   const data = await qlooGet<{ results: { entities: CrossDomainEntity[] } }>("/v2/insights", {
     "filter.type": targetType,
     "signal.interests.tags": tagIds.join(","),
+    "signal.location.query": location,
     take,
   });
   return data.results?.entities ?? [];

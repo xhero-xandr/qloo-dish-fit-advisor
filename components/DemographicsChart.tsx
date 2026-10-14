@@ -19,7 +19,7 @@ export function DemographicsChart({ demo }: { demo: Demographics }) {
               <div className="h-3 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                 <div
                   className={`h-full rounded-full ${value >= 0 ? "bg-emerald-500" : "bg-rose-400"}`}
-                  style={{ width: `${(Math.abs(value) / maxAbs) * 100}%`, marginLeft: value < 0 ? "0" : undefined }}
+                  style={{ width: `${(Math.abs(value) / maxAbs) * 100}%` }}
                 />
               </div>
               <span className="w-10 shrink-0 text-right text-xs text-zinc-400">{value.toFixed(2)}</span>

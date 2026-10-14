@@ -37,12 +37,10 @@ export interface PilotPackage {
   city: string;
   resolvedLocation?: string;
   matchedTag?: { id: string; name: string; type: string };
-  resolvedTags: { id: string; name: string; type: string }[];
   venues: VenueCandidate[];
   aggregateDemographics?: DemographicsResult;
   regionInsights: RegionInsight[];
   culturalAffinity?: CulturalAffinity;
-  audienceProfile: string;
   tastingBrief: string;
   pilotPlan: string[];
   ownerLetter: string;
@@ -109,19 +107,17 @@ function extractDietaryOptions(tags: { id: string; name: string; type: string }[
 }
 
 /**
- * Cross-domain taste signal: what the *same* audience (by the matched cuisine
- * tag) tends toward in brands, TV shows, artists, and podcasts. This is the
- * part of the product that genuinely uses Qloo's cross-domain graph rather
- * than a single-category lookup — no review site or menu database can answer
- * "what do izakaya fans also watch/listen to/buy".
+ * Cross-domain taste signal: what the audience for the matched cuisine tag,
+ * *in this city*, tends toward in brands, TV shows, artists, and podcasts —
+ * "what do izakaya fans in Austin also watch/listen to/buy".
  */
-async function fetchCulturalAffinity(tagId: string): Promise<CulturalAffinity | undefined> {
+async function fetchCulturalAffinity(tagId: string, city: string): Promise<CulturalAffinity | undefined> {
   try {
     const [brands, tvShows, artists, podcasts] = await Promise.all([
-      recommendByTags([tagId], "urn:entity:brand", 5),
-      recommendByTags([tagId], "urn:entity:tv_show", 5),
-      recommendByTags([tagId], "urn:entity:artist", 5),
-      recommendByTags([tagId], "urn:entity:podcast", 5),
+      recommendByTags([tagId], "urn:entity:brand", city, 5),
+      recommendByTags([tagId], "urn:entity:tv_show", city, 5),
+      recommendByTags([tagId], "urn:entity:artist", city, 5),
+      recommendByTags([tagId], "urn:entity:podcast", city, 5),
     ]);
     if (brands.length === 0 && tvShows.length === 0 && artists.length === 0 && podcasts.length === 0) return undefined;
     return {
@@ -134,30 +130,6 @@ async function fetchCulturalAffinity(tagId: string): Promise<CulturalAffinity | 
     // best-effort enrichment; a failure here shouldn't break the whole pilot package
     return undefined;
   }
-}
-
-function describeDemographics(demo?: DemographicsResult): string {
-  if (!demo) return "No demographic data available for this venue.";
-
-  const ageEntries = Object.entries(demo.age ?? {});
-  const topAge = ageEntries.sort((a, b) => b[1] - a[1])[0];
-  const genderLean = (demo.gender?.male ?? 0) - (demo.gender?.female ?? 0);
-
-  const ageLabel: Record<string, string> = {
-    "24_and_younger": "24 and younger",
-    "25_to_29": "25–29",
-    "30_to_34": "30–34",
-    "35_to_44": "35–44",
-    "45_to_54": "45–54",
-    "55_and_older": "55 and older",
-  };
-
-  const genderText =
-    genderLean > 0.15 ? "with a notable skew toward a male audience"
-    : genderLean < -0.15 ? "with a notable skew toward a female audience"
-    : "with a roughly balanced audience by gender";
-
-  return `Strongest affinity in the ${ageLabel[topAge?.[0]] ?? "mixed"} age group (score ${topAge?.[1]?.toFixed(2) ?? "n/a"}), ${genderText}.`;
 }
 
 /**
@@ -200,6 +172,9 @@ function extractKeywords(concept: string): string[] {
   return Array.from(new Set(words)).slice(0, 3);
 }
 
+/** The input couldn't be mapped to Qloo's vocabulary — a client-side problem, not an upstream failure. */
+export class ConceptNotFoundError extends Error {}
+
 function isRateLimitError(error: unknown): boolean {
   return error instanceof Error && error.message.includes("429");
 }
@@ -215,6 +190,7 @@ function describeResolvedLocation(place?: QlooPlace): string | undefined {
 const CACHE_TTL_MS = 10 * 60 * 1000; // identical concept+city requests reuse this instead of burning the shared monthly Qloo quota
 const CACHE_MAX_ENTRIES = 200;
 const resultCache = new Map<string, { data: PilotPackage; expiresAt: number }>();
+const inFlight = new Map<string, Promise<PilotPackage>>();
 
 function cacheKey(concept: string, city: string): string {
   return `${concept.trim().toLowerCase()}::${city.trim().toLowerCase()}`;
@@ -227,6 +203,20 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
     return { ...cached.data, cachedAt: new Date(cached.expiresAt - CACHE_TTL_MS).toISOString() };
   }
 
+  // A double-submit or a second tab joins the run already in progress instead of starting another full pipeline.
+  const pending = inFlight.get(key);
+  if (pending) return pending;
+
+  const run = computeAndCache(key, concept, city);
+  inFlight.set(key, run);
+  try {
+    return await run;
+  } finally {
+    inFlight.delete(key);
+  }
+}
+
+async function computeAndCache(key: string, concept: string, city: string): Promise<PilotPackage> {
   const result = await buildPilotPackageUncached(concept, city);
 
   if (resultCache.size >= CACHE_MAX_ENTRIES) {
@@ -262,7 +252,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
   );
 
   if (candidateTags.length === 0) {
-    throw new Error(`Qloo couldn't find a taste tag close to "${concept}". Try rephrasing the concept (e.g. a specific cuisine or dish type).`);
+    throw new ConceptNotFoundError(`Qloo couldn't find a taste tag close to "${concept}". Try rephrasing the concept (e.g. a specific cuisine or dish type).`);
   }
 
   const rankedTags = rankTagsForPlaceMatching(candidateTags);
@@ -319,22 +309,9 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     })
   );
 
-  const demoLines = venues
-    .filter((v) => v.demographics)
-    .map((v) => `— ${v.name}: ${describeDemographics(v.demographics)}`);
-
-  const audienceProfile =
-    demoLines.length > 0
-      ? [
-          `The concept "${concept}" in ${city} matched Qloo tag "${primaryTag?.name}" (${primaryTag?.type}).`,
-          `Based on the audiences of ${venues.length} taste-matched venue${venues.length === 1 ? "" : "s"}:`,
-          ...demoLines,
-        ].join("\n")
-      : `Not enough data to build an audience demographic profile for "${concept}" in ${city}.`;
-
   const vibeWords = Array.from(new Set(venues.flatMap((v) => v.vibeTags))).slice(0, 10);
   const regionInsights = aggregateRegionInsights(topPlaces);
-  const culturalAffinity = primaryTag && places.length > 0 ? await fetchCulturalAffinity(primaryTag.id) : undefined;
+  const culturalAffinity = primaryTag && places.length > 0 ? await fetchCulturalAffinity(primaryTag.id, city) : undefined;
 
   const tastingBrief = [
     `Tasting concept: "${concept}"`,
@@ -381,12 +358,10 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     city,
     resolvedLocation: describeResolvedLocation(topPlaces[0]),
     matchedTag: places.length > 0 ? primaryTag : undefined,
-    resolvedTags: candidateTags,
     venues,
     aggregateDemographics: aggregateDemographics(venues),
     regionInsights,
     culturalAffinity,
-    audienceProfile,
     tastingBrief,
     pilotPlan,
     ownerLetter,

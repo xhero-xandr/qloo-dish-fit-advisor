@@ -1,56 +1,6 @@
-export interface Demographics {
-  age: Record<string, number>;
-  gender: Record<string, number>;
-}
+import type { PilotPackage } from "@/lib/pilot-package";
 
-export interface VenueCandidate {
-  name: string;
-  address?: string;
-  phone?: string;
-  rating?: number;
-  priceLevel?: number | null;
-  description?: string;
-  website?: string;
-  imageUrl?: string;
-  vibeTags: string[];
-  dietaryOptions: string[];
-  demographics?: Demographics;
-}
-
-export interface RegionInsight {
-  keyword: string;
-  mentions: number;
-}
-
-export interface CulturalSignalItem {
-  name: string;
-  imageUrl?: string;
-  subtitle?: string;
-}
-
-export interface CulturalAffinity {
-  brands: CulturalSignalItem[];
-  tvShows: CulturalSignalItem[];
-  artists: CulturalSignalItem[];
-  podcasts: CulturalSignalItem[];
-}
-
-export interface PilotPackage {
-  concept: string;
-  city: string;
-  resolvedLocation?: string;
-  matchedTag?: { id: string; name: string; type: string };
-  resolvedTags: { id: string; name: string; type: string }[];
-  venues: VenueCandidate[];
-  aggregateDemographics?: Demographics;
-  regionInsights: RegionInsight[];
-  culturalAffinity?: CulturalAffinity;
-  audienceProfile: string;
-  tastingBrief: string;
-  pilotPlan: string[];
-  ownerLetter: string;
-  limitations: string[];
-  cachedAt?: string;
-}
+export type { CulturalAffinity, CulturalSignalItem, PilotPackage, RegionInsight, VenueCandidate } from "@/lib/pilot-package";
+export type { DemographicsResult as Demographics } from "@/lib/qloo";
 
 export type CityResult = { city: string; data?: PilotPackage; error?: string };
