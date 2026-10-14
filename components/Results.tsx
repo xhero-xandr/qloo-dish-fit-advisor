@@ -29,9 +29,10 @@ export function Results({ result }: { result: PilotPackage }) {
       )}
       {result.cachedAt && (
         <p className="text-xs text-zinc-400">
-          Served from cache — this exact concept and city was analyzed {new Date(result.cachedAt).toLocaleString()}, and
-          that result (Qloo data and agent analysis) is reused for up to 12 hours instead of re-querying, to protect the
-          shared Qloo and Gemini quotas. Nothing in it is changed or regenerated.
+          Served from cache — this exact concept and city was already analyzed{" "}
+          {new Date(result.cachedAt).toLocaleString()}. Any concept + city pair, preset or your own, is kept for up to 12
+          hours so repeats (presets, reloads, re-running a comparison) don&apos;t spend the shared Qloo and Gemini quotas
+          again. Nothing in it is changed or regenerated; a new concept or city always runs a fresh analysis.
         </p>
       )}
       {result.limitations.length > 0 && (

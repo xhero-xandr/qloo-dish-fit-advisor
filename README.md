@@ -171,10 +171,12 @@ gets faster automatically — no code change needed.
 On top of that, identical concept+city requests are served from an
 in-memory cache (`lib/pilot-package.ts`, 12 hours by default, configurable
 via `PILOT_CACHE_TTL_MINUTES`) instead of re-querying. The long default is
-deliberate: venue data doesn't change hour to hour, the free Gemini tier
-allows ~500 requests/day (~110 analyses at ~4.4 requests each), and most
-visitors click the same presets — so each preset costs quota once per half
-day, not once per visitor. A result where the agent fell back (Gemini
+deliberate: venue data doesn't change hour to hour, and the free Gemini tier
+allows ~500 requests/day (~110 analyses at ~4.4 requests each). The cache
+only saves quota on repeats — presets, reloads, re-running a comparison — so
+each of those costs quota once per half day, not once per visitor. A new
+concept or city always runs a fresh analysis, so the daily Gemini quota, not
+the cache, is what bounds free-form use. A result where the agent fell back (Gemini
 overloaded or out of quota) is cached for only 10 minutes, so a brief outage
 doesn't pin the degraded version. The cache is in memory, so a restart
 clears it. The
