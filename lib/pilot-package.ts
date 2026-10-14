@@ -9,7 +9,7 @@ import {
   type DemographicsResult,
   type CrossDomainEntity,
 } from "./qloo";
-import { isGeminiConfigured } from "./gemini";
+import { isLlmConfigured } from "./llm";
 import {
   planTagsWithAgent,
   synthesizeWithAgent,
@@ -319,7 +319,7 @@ async function computeAndCache(key: string, concept: string, city: string): Prom
       if (oldestKey) resultCache.delete(oldestKey);
     }
   }
-  // A result where the agent was enabled but fell back (Gemini overloaded or out of quota) is
+  // A result where the agent was enabled but fell back (every model overloaded or out of quota) is
   // kept only briefly, so a transient outage doesn't pin the degraded version for half a day.
   const degraded = (result.agent?.notes.length ?? 0) > 0;
   const now = Date.now();
@@ -451,7 +451,7 @@ function shortError(error: unknown): string {
 
 async function buildPilotPackageUncached(concept: string, city: string): Promise<PilotPackage> {
   const limitations: string[] = [];
-  const agentEnabled = isGeminiConfigured();
+  const agentEnabled = isLlmConfigured();
   const agentNotes: string[] = [];
 
   // One place lookup per tag per analysis, shared by the agent's tool calls and the pipeline.

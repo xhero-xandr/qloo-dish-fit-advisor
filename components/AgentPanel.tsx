@@ -34,7 +34,7 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
       <div>
         <h2 className="text-lg font-semibold">Agent analysis</h2>
         <p className="mt-0.5 text-xs text-zinc-500">
-          {models.length > 0 ? `Gemini (${models.join(", ")}) ` : "Gemini "}
+          {models.length > 0 ? `The agent (${models.join(", ")}) is ` : "The agent is "}
           working only from Qloo data: it chose the taste tags by calling Qloo itself, and every claim below cites
           the numbered Qloo facts it relied on. Code discards claims whose citations don&apos;t exist
           {analysis && analysis.droppedItems > 0 ? ` (${analysis.droppedItems} discarded here)` : ""} — it can&apos;t check

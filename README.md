@@ -89,7 +89,7 @@ free-text concept and city the user types.
 
 ## The agent layer (Gemini)
 
-`lib/agent.ts`, `lib/gemini.ts`. Gemini is called server-side through the
+`lib/agent.ts`, `lib/llm.ts`. Gemini is called server-side through the
 [Vercel AI SDK](https://ai-sdk.dev) (`ai` + `@ai-sdk/google`): the tag agent
 is a `generateText` tool loop (`stopWhen` / `prepareStep`), and the analysis
 is `generateText` with `Output.object` and a zod schema.
@@ -106,11 +106,19 @@ is `generateText` with `Output.object` and a zod schema.
   Google's own 429 `QuotaFailure` details). One analysis averages ~4.4
   Gemini requests, so ~110 analyses/day. A per-minute 429 is retried by
   the SDK with exponential backoff (4 retries: 2s, 4s, 8s, 16s). The first
-  429 for the per-day quota parks that model until Google's reported reset
-  (10 minutes to 6 hours), so later analyses go straight to the
-  deterministic pipeline, and say so, instead of each sitting through ~30s
-  of retries. Enabling billing on the Google project lifts both limits;
-  no code change needed.
+  429 for a daily quota parks that model until the reported reset (10
+  minutes to 6 hours), so later analyses move on at once instead of each
+  sitting through ~30s of retries. Enabling billing on the Google project
+  lifts both limits; no code change needed.
+- **Groq backup (optional, `GROQ_API_KEY`):** once Gemini is parked, the
+  analysis step (verdict, venue, plan) runs on `openai/gpt-oss-120b` via
+  Groq instead of falling back to the template. Tag selection stays on
+  Gemini only: in testing gpt-oss failed that tool loop in every run
+  (calling tools it was told not to, skipping a required call, inventing
+  tag ids) while handling the analysis fine. Groq's free tier allows 8K
+  tokens/minute and 200K/day, so it is a backup for a few dozen analyses,
+  slower than Gemini, and words things differently; the panel names the
+  model that answered.
 - **Fewer requests per analysis:** the tag agent submits its choice through
   a `submit_choice` tool call in the same loop rather than a separate JSON
   turn, and batches independent tool calls per turn.

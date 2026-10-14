@@ -4,7 +4,7 @@
 
 import { generateText, hasToolCall, isStepCount, Output, tool } from "ai";
 import { z } from "zod";
-import { GEMINI_MAX_RETRIES, geminiModels, google, isModelParked, parkIfDailyQuota } from "./gemini";
+import { isModelParked, LLM_MAX_RETRIES, llmModels, parkIfQuotaSpent, type ChainModel } from "./llm";
 import { QlooQuotaError, type QlooPlace, type QlooTag } from "./qloo";
 
 const MAX_TOOL_CALLS = 6;
@@ -80,23 +80,24 @@ function compactTag(t: { id: string; name: string; type: string }) {
 
 export type SearchTags = (query: string) => Promise<QlooTag[]>;
 
-/** Tries each configured model in turn; Qloo lookups are memoized by the caller, so a retry doesn't re-spend Qloo quota. */
-async function withModelFallback<T>(run: (model: string) => Promise<T>): Promise<T> {
+/** Tries each model in the chain in turn; Qloo lookups are memoized by the caller, so a retry doesn't re-spend Qloo quota. */
+async function withModelFallback<T>(models: ChainModel[], run: (model: ChainModel) => Promise<T>): Promise<T> {
   const errors: string[] = [];
-  for (const model of geminiModels()) {
-    if (isModelParked(model)) {
-      errors.push(`${model}: daily quota spent, skipped until it resets`);
+  for (const model of models) {
+    if (isModelParked(model.label)) {
+      errors.push(`${model.label}: quota spent, skipped until it resets`);
       continue;
     }
     try {
       return await run(model);
     } catch (error) {
       if (error instanceof QlooQuotaError) throw error;
-      parkIfDailyQuota(model, error);
-      errors.push(`${model}: ${error instanceof Error ? error.message.replace(/\s+/g, " ").slice(0, 200) : "failed"}`);
+      parkIfQuotaSpent(model.label, error);
+      console.warn(`[llm] ${model.label} failed:`, error instanceof Error ? error.message : error);
+      errors.push(`${model.label}: ${error instanceof Error ? error.message.replace(/\s+/g, " ").slice(0, 200) : "failed"}`);
     }
   }
-  throw new Error(`No Gemini model available — ${errors.join("; ") || "none configured"}`);
+  throw new Error(`No LLM available — ${errors.join("; ") || "none configured"}`);
 }
 
 export function planTagsWithAgent(
@@ -105,7 +106,11 @@ export function planTagsWithAgent(
   findVenues: FindVenues,
   searchTags: SearchTags
 ): Promise<AgentTagDecision> {
-  return withModelFallback((model) => runTagConversation(concept, city, findVenues, searchTags, model));
+  // Tag selection runs only on models that handle its tool loop; see ChainModel.toolAgent.
+  return withModelFallback(
+    llmModels().filter((m) => m.toolAgent),
+    (model) => runTagConversation(concept, city, findVenues, searchTags, model)
+  );
 }
 
 async function runTagConversation(
@@ -113,7 +118,7 @@ async function runTagConversation(
   city: string,
   findVenues: FindVenues,
   searchTags: SearchTags,
-  model: string
+  { label, model }: ChainModel
 ): Promise<AgentTagDecision> {
   const seenTags = new Map<string, { id: string; name: string; type: string }>();
   const venueChecks = new Map<string, QlooPlace[]>();
@@ -178,7 +183,7 @@ async function runTagConversation(
   let result;
   try {
     result = await generateText({
-      model: google(model),
+      model,
       system: TAG_SYSTEM_PROMPT,
       prompt: `Concept: ${JSON.stringify(concept)}\nCity: ${JSON.stringify(city)}`,
       tools,
@@ -190,7 +195,7 @@ async function runTagConversation(
           ? { toolChoice: { type: "tool", toolName: "submit_choice" } }
           : {},
       ...SAMPLING,
-      maxRetries: GEMINI_MAX_RETRIES,
+      maxRetries: LLM_MAX_RETRIES,
       abortSignal: abort.signal,
       timeout: { totalMs: 120_000 },
     });
@@ -224,7 +229,7 @@ async function runTagConversation(
     });
 
   return {
-    model,
+    model: label,
     primary: { ...compactTagFull(primaryTag), venueCount: primaryPlaces.length },
     secondary,
     reasoning: value.reasoning.slice(0, 500),
@@ -282,17 +287,17 @@ export async function synthesizeWithAgent(
   const factIds = new Set(facts.map((f) => f.id));
   const factList = facts.map((f) => `${f.id}: ${f.text}`).join("\n");
 
-  const { model, value } = await withModelFallback(async (model) => {
+  const { model, value } = await withModelFallback(llmModels(), async ({ label, model }) => {
     const { output } = await generateText({
-      model: google(model),
+      model,
       system: ANALYSIS_SYSTEM_PROMPT,
       prompt: `Concept: ${JSON.stringify(concept)}\nCity: ${JSON.stringify(city)}\n\nFacts:\n${factList}`,
       output: Output.object({ schema: ANALYSIS_SCHEMA }),
       ...SAMPLING,
-      maxRetries: GEMINI_MAX_RETRIES,
+      maxRetries: LLM_MAX_RETRIES,
       timeout: { totalMs: 90_000 },
     });
-    return { model, value: output };
+    return { model: label, value: output };
   });
 
   let dropped = 0;
