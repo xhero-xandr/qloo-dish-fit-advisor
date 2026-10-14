@@ -39,6 +39,8 @@ export function CulturalAffinityPanel({ data }: { data: CulturalAffinityData }) 
       </p>
       <SignalRow title="This audience also tends toward these brands" items={data.brands} />
       <SignalRow title="...and these TV shows" items={data.tvShows} />
+      <SignalRow title="...these artists" items={data.artists} />
+      <SignalRow title="...and these podcasts" items={data.podcasts} />
     </div>
   );
 }

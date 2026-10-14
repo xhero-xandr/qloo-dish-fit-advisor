@@ -25,6 +25,19 @@ export function VenueCard({ venue, rank }: { venue: VenueCandidate; rank: number
         </div>
         {venue.address && <p className="mt-1 text-xs text-zinc-500">{venue.address}</p>}
         {venue.description && <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{venue.description}</p>}
+        {venue.dietaryOptions.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {venue.dietaryOptions.map((d, j) => (
+              <span
+                key={j}
+                className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                title="Dietary option listed by Qloo for this venue"
+              >
+                🌱 {d}
+              </span>
+            ))}
+          </div>
+        )}
         {venue.vibeTags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {venue.vibeTags.map((t, j) => (

@@ -58,13 +58,14 @@ audience data, and a plan — no sales call required.
 | Tag resolution | `GET /v2/tags` (semantic search) | Map free-text concept to Qloo's controlled taste vocabulary |
 | Venue discovery | `GET /v2/insights?filter.type=urn:entity:place` | Real venues in a city filtered by resolved taste tag(s) |
 | Audience profile | `GET /v2/insights?filter.type=urn:demographics` | Age/gender affinity skew for a specific venue's audience |
-| Cross-domain affinity | `GET /v2/insights?filter.type=urn:entity:brand\|tv_show` with `signal.interests.tags` | What the *same* taste-signal audience tends toward in other categories entirely — brands, TV shows |
+| Cross-domain affinity | `GET /v2/insights?filter.type=urn:entity:brand\|tv_show\|artist\|podcast` with `signal.interests.tags` | What the *same* taste-signal audience tends toward in other categories entirely — brands, TV shows, artists, podcasts |
+| Dietary signals | `tags` on each matched venue (`urn:tag:dietary_option:qloo:*`) | Vegan/vegetarian/gluten-free/halal/etc. flags Qloo already attaches to a venue, surfaced as badges |
 
 The cross-domain step is the part that actually exercises Qloo's taste
 **graph** rather than a single-category lookup: the same matched cuisine tag
-is projected onto brands and TV shows via shared audience affinity, not
-anything derivable from a menu database or review site. See "Cultural
-affinity" in the app output.
+is projected onto brands, TV shows, artists, and podcasts via shared audience
+affinity, not anything derivable from a menu database or review site. See
+"Cultural affinity" in the app output.
 
 All calls go through the official hackathon endpoint
 (`https://hackathon.api.qloo.com`) using the event-issued API key, server-side

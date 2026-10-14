@@ -143,6 +143,7 @@ export interface CrossDomainEntity {
   properties?: {
     image?: { url?: string };
     genres?: string[];
+    primary_genres?: string[];
     short_description?: string;
     description?: string;
   };

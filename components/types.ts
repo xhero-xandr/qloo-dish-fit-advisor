@@ -13,6 +13,7 @@ export interface VenueCandidate {
   website?: string;
   imageUrl?: string;
   vibeTags: string[];
+  dietaryOptions: string[];
   demographics?: Demographics;
 }
 
@@ -30,6 +31,8 @@ export interface CulturalSignalItem {
 export interface CulturalAffinity {
   brands: CulturalSignalItem[];
   tvShows: CulturalSignalItem[];
+  artists: CulturalSignalItem[];
+  podcasts: CulturalSignalItem[];
 }
 
 export interface PilotPackage {

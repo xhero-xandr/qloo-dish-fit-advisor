@@ -10,6 +10,7 @@ export interface VenueCandidate {
   website?: string;
   imageUrl?: string;
   vibeTags: string[];
+  dietaryOptions: string[];
   demographics?: DemographicsResult;
 }
 
@@ -27,6 +28,8 @@ export interface CulturalSignalItem {
 export interface CulturalAffinity {
   brands: CulturalSignalItem[];
   tvShows: CulturalSignalItem[];
+  artists: CulturalSignalItem[];
+  podcasts: CulturalSignalItem[];
 }
 
 export interface PilotPackage {
@@ -91,25 +94,39 @@ function toCulturalSignalItems(entities: CrossDomainEntity[]): CulturalSignalIte
   return entities.map((e) => ({
     name: e.name,
     imageUrl: e.properties?.image?.url,
-    subtitle: e.properties?.genres?.slice(0, 2).join(", "),
+    subtitle: (e.properties?.genres ?? e.properties?.primary_genres)?.slice(0, 2).join(", "),
   }));
+}
+
+const DIETARY_TAG_TYPE = "urn:tag:dietary_option:qloo";
+
+/** Pull the dietary-option tags Qloo attached to a venue (vegan, gluten-free, halal, ...). */
+function extractDietaryOptions(tags: { id: string; name: string; type: string }[]): string[] {
+  return tags.filter((t) => t.type === DIETARY_TAG_TYPE).map((t) => t.name);
 }
 
 /**
  * Cross-domain taste signal: what the *same* audience (by the matched cuisine
- * tag) tends toward in brands and TV shows. This is the part of the product
- * that genuinely uses Qloo's cross-domain graph rather than a single-category
- * lookup — no review site or menu database can answer "what do izakaya fans
- * also watch/buy".
+ * tag) tends toward in brands, TV shows, artists, and podcasts. This is the
+ * part of the product that genuinely uses Qloo's cross-domain graph rather
+ * than a single-category lookup — no review site or menu database can answer
+ * "what do izakaya fans also watch/listen to/buy".
  */
 async function fetchCulturalAffinity(tagId: string): Promise<CulturalAffinity | undefined> {
   try {
-    const [brands, tvShows] = await Promise.all([
+    const [brands, tvShows, artists, podcasts] = await Promise.all([
       recommendByTags([tagId], "urn:entity:brand", 5),
       recommendByTags([tagId], "urn:entity:tv_show", 5),
+      recommendByTags([tagId], "urn:entity:artist", 5),
+      recommendByTags([tagId], "urn:entity:podcast", 5),
     ]);
-    if (brands.length === 0 && tvShows.length === 0) return undefined;
-    return { brands: toCulturalSignalItems(brands), tvShows: toCulturalSignalItems(tvShows) };
+    if (brands.length === 0 && tvShows.length === 0 && artists.length === 0 && podcasts.length === 0) return undefined;
+    return {
+      brands: toCulturalSignalItems(brands),
+      tvShows: toCulturalSignalItems(tvShows),
+      artists: toCulturalSignalItems(artists),
+      podcasts: toCulturalSignalItems(podcasts),
+    };
   } catch {
     // best-effort enrichment; a failure here shouldn't break the whole pilot package
     return undefined;
@@ -253,7 +270,8 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
         description: p.properties?.short_description ?? p.properties?.description,
         website: p.properties?.website,
         imageUrl: p.properties?.image?.url,
-        vibeTags: (p.tags ?? []).slice(0, 6).map((t) => t.name),
+        vibeTags: (p.tags ?? []).filter((t) => t.type !== DIETARY_TAG_TYPE).slice(0, 6).map((t) => t.name),
+        dietaryOptions: extractDietaryOptions(p.tags ?? []),
         demographics: demo,
       };
     })
