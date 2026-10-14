@@ -115,6 +115,14 @@ gets faster automatically — no code change needed.
   an existing fixed venue; it is not a fit for validating a food-truck or
   street-stall concept, where the decision depends on foot traffic and permit
   location rather than venue listings.
+- No foot-traffic or visit-volume data (how many people actually walk in per
+  day) is available. Qloo's `popularity` field is a relative affinity/rank
+  score within its taste graph, not a visitor count, and it is never
+  presented as one in this app. Qloo has no mobile-location-panel data
+  (the kind SafeGraph, Placer.ai, or Foursquare provide) — that's a
+  different data category entirely. For actual footfall, pair this tool's
+  output with a dedicated foot-traffic provider; this app answers "is the
+  audience right for this venue," not "how many people pass by it."
 
 ## Running locally
 
