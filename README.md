@@ -90,6 +90,17 @@ gets faster automatically — no code change needed.
 
 ## Known limitations
 
+- The multi-city "Best fit" verdict is our own heuristic, not a Qloo score:
+  `venues found × 2 + average rating`. More matching venues weighs more
+  heavily than a slightly higher rating — a city with 3 modest-rated venues
+  can outrank a city with 2 excellent ones. This is disclosed in the UI next
+  to the verdict, not left as an unexplained badge.
+- Keyword extraction from a free-text concept caps at 3 keywords (plus the
+  full phrase) to bound how many Qloo calls one analysis fires. For a long
+  concept, later words can be dropped entirely from tag resolution — e.g.
+  "Korean fried chicken with natural wine pairing" only searches "korean",
+  "fried", "chicken"; "wine" and "pairing" are never queried. The matched tag
+  shown can end up broader than the full concept as a result.
 - Venue ordering within a matched tag is by business rating, not by a true
   relevance/affinity score — the plain tag-filter endpoint doesn't return one.
   A future version could cross-check with the signal-based `recommend`

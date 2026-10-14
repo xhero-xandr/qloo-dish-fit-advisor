@@ -53,6 +53,13 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
 
   return (
     <Section title="City comparison" subtitle={`${results.length} cities analyzed for the same concept`}>
+      {usable.length > 1 && (
+        <p className="mb-3 text-xs text-zinc-400">
+          &quot;Best fit&quot; ranks by matching venues found (weighted 2× each) plus average rating — more
+          real candidate venues counts more than a slightly higher rating. This is our ranking heuristic
+          on top of Qloo&apos;s data, not a Qloo score itself.
+        </p>
+      )}
       {winner && usable.length > 1 && (
         <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
           <strong>{winner.city}</strong> looks like the strongest fit — {winner.venueCount} matching venue
