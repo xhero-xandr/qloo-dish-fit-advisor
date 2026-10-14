@@ -4,7 +4,7 @@
 
 import { generateText, hasToolCall, isStepCount, Output, tool } from "ai";
 import { z } from "zod";
-import { GEMINI_MAX_RETRIES, geminiModels, google } from "./gemini";
+import { GEMINI_MAX_RETRIES, geminiModels, google, isModelParked, parkIfDailyQuota } from "./gemini";
 import { QlooQuotaError, type QlooPlace, type QlooTag } from "./qloo";
 
 const MAX_TOOL_CALLS = 6;
@@ -84,10 +84,15 @@ export type SearchTags = (query: string) => Promise<QlooTag[]>;
 async function withModelFallback<T>(run: (model: string) => Promise<T>): Promise<T> {
   const errors: string[] = [];
   for (const model of geminiModels()) {
+    if (isModelParked(model)) {
+      errors.push(`${model}: daily quota spent, skipped until it resets`);
+      continue;
+    }
     try {
       return await run(model);
     } catch (error) {
       if (error instanceof QlooQuotaError) throw error;
+      parkIfDailyQuota(model, error);
       errors.push(`${model}: ${error instanceof Error ? error.message.replace(/\s+/g, " ").slice(0, 200) : "failed"}`);
     }
   }

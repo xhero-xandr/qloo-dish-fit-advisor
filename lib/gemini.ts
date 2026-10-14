@@ -2,6 +2,7 @@
 // output are handled by the SDK; this module only configures the provider.
 
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { APICallError, RetryError } from "ai";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -24,4 +25,26 @@ export function geminiModels(): string[] {
 
 export function isGeminiConfigured(): boolean {
   return Boolean(API_KEY);
+}
+
+// Once a model's daily quota is spent, every call would sit through the SDK's retries (~30s)
+// before failing. The first such failure parks the model instead, so later analyses go
+// straight to the deterministic fallback until the quota resets.
+const MIN_DAILY_COOLDOWN_MS = 10 * 60_000;
+const MAX_COOLDOWN_MS = 6 * 60 * 60_000;
+const unavailableUntil = new Map<string, number>();
+
+export function isModelParked(model: string): boolean {
+  return (unavailableUntil.get(model) ?? 0) > Date.now();
+}
+
+/** Parks `model` if `error` is a 429 for its per-day quota (Google's QuotaFailure names a PerDay quota id). */
+export function parkIfDailyQuota(model: string, error: unknown): void {
+  const last = RetryError.isInstance(error) ? error.lastError : error;
+  if (!APICallError.isInstance(last) || last.statusCode !== 429) return;
+  const body = last.responseBody ?? "";
+  if (!/PerDay/i.test(body)) return;
+  const delay = body.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  const resetMs = delay ? Number(delay[1]) * 1000 : 0;
+  unavailableUntil.set(model, Date.now() + Math.min(Math.max(resetMs, MIN_DAILY_COOLDOWN_MS), MAX_COOLDOWN_MS));
 }

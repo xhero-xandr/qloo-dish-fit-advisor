@@ -105,9 +105,11 @@ is `generateText` with `Output.object` and a zod schema.
 - **Free-tier quota:** 15 requests/minute and ~500/day per model (from
   Google's own 429 `QuotaFailure` details). One analysis averages ~4.4
   Gemini requests, so ~110 analyses/day. A per-minute 429 is retried by
-  the SDK with exponential backoff (4 retries: 2s, 4s, 8s, 16s); once the
-  daily quota is spent, the app falls back to the deterministic pipeline
-  and says so. Enabling billing on the Google project lifts both limits;
+  the SDK with exponential backoff (4 retries: 2s, 4s, 8s, 16s). The first
+  429 for the per-day quota parks that model until Google's reported reset
+  (10 minutes to 6 hours), so later analyses go straight to the
+  deterministic pipeline, and say so, instead of each sitting through ~30s
+  of retries. Enabling billing on the Google project lifts both limits;
   no code change needed.
 - **Fewer requests per analysis:** the tag agent submits its choice through
   a `submit_choice` tool call in the same loop rather than a separate JSON
