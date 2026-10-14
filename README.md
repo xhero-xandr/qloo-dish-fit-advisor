@@ -90,23 +90,25 @@ free-text concept and city the user types.
 ## The agent layer (Gemini)
 
 `lib/agent.ts`, `lib/gemini.ts`. Gemini is called server-side through the
-REST `generateContent` API with function calling and JSON-schema output.
+[Vercel AI SDK](https://ai-sdk.dev) (`ai` + `@ai-sdk/google`): the tag agent
+is a `generateText` tool loop (`stopWhen` / `prepareStep`), and the analysis
+is `generateText` with `Output.object` and a zod schema.
 
 - **Model:** `gemini-3.5-flash-lite` (configurable via `GEMINI_MODELS`,
   a comma-separated fallback chain). Chosen by measurement: it answered
   tool turns in under a second, while 3.8-flash and 3.6-flash mostly
   returned 503, hung past 90s, or took ~55s per turn — and on the free tier
   3.8-flash allows only 20 requests/day.
-- **Free-tier quota, handled by queueing:** the key's quota is 15
-  requests/minute per model (read from Google's own 429 `QuotaFailure`
-  details). One analysis averages ~4.4 Gemini requests (measured over 10
-  runs), so a burst of users would exceed it. Calls are queued at 14/minute
-  instead of failing — the same "let it wait" policy as the Qloo client —
-  so under load an analysis gets slower (measured 14–70s during a
-  back-to-back test run) rather than silently losing the agent. A 429
-  asking to wait ≤65s is waited out; a per-day quota skips that model
-  until it resets. Enabling billing on the Google project removes the
-  wait; no code change needed.
+- **Reproducible output:** both steps run at `temperature: 0` with a fixed
+  `seed`. Over 5 concepts × 2 runs, the second run returned the same tag,
+  fit, venue, plan, menu notes and risks, word for word, as the first.
+- **Free-tier quota:** 15 requests/minute and ~500/day per model (from
+  Google's own 429 `QuotaFailure` details). One analysis averages ~4.4
+  Gemini requests, so ~110 analyses/day. A per-minute 429 is retried by
+  the SDK with exponential backoff (4 retries: 2s, 4s, 8s, 16s); once the
+  daily quota is spent, the app falls back to the deterministic pipeline
+  and says so. Enabling billing on the Google project lifts both limits;
+  no code change needed.
 - **Fewer requests per analysis:** the tag agent submits its choice through
   a `submit_choice` tool call in the same loop rather than a separate JSON
   turn, and batches independent tool calls per turn.
