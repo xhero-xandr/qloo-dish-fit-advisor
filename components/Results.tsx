@@ -29,9 +29,9 @@ export function Results({ result }: { result: PilotPackage }) {
       )}
       {result.cachedAt && (
         <p className="text-xs text-zinc-400">
-          Served from a short-lived cache (first fetched {new Date(result.cachedAt).toLocaleTimeString()}) — identical
-          concept+city requests reuse the same live Qloo result for 10 minutes instead of re-querying, to protect the
-          shared rate limit. No data is different; it&apos;s the same Qloo response.
+          Served from cache — this exact concept and city was analyzed {new Date(result.cachedAt).toLocaleString()}, and
+          that result (Qloo data and agent analysis) is reused for up to 12 hours instead of re-querying, to protect the
+          shared Qloo and Gemini quotas. Nothing in it is changed or regenerated.
         </p>
       )}
       {result.limitations.length > 0 && (

@@ -274,9 +274,13 @@ function describeResolvedLocation(place?: QlooPlace): string | undefined {
 /** A pilot needs candidates to choose between; fewer than this and the agent's tag must beat the baseline's. */
 const MIN_PILOT_VENUES = 3;
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // identical concept+city requests reuse this instead of burning the shared monthly Qloo quota
+// Identical concept+city requests reuse a result instead of re-spending quota. Long by default:
+// venue data doesn't change hour to hour, while the free Gemini tier allows ~500 requests/day
+// (~110 analyses) and judges mostly click the same presets.
+const CACHE_TTL_MS = Number(process.env.PILOT_CACHE_TTL_MINUTES ?? 12 * 60) * 60 * 1000;
+const DEGRADED_CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 200;
-const resultCache = new Map<string, { data: PilotPackage; expiresAt: number }>();
+const resultCache = new Map<string, { data: PilotPackage; fetchedAt: number; expiresAt: number }>();
 const inFlight = new Map<string, Promise<PilotPackage>>();
 
 function cacheKey(concept: string, city: string): string {
@@ -287,7 +291,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
   const key = cacheKey(concept, city);
   const cached = resultCache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
-    return { ...cached.data, cachedAt: new Date(cached.expiresAt - CACHE_TTL_MS).toISOString() };
+    return { ...cached.data, cachedAt: new Date(cached.fetchedAt).toISOString() };
   }
 
   // A double-submit or a second tab joins the run already in progress instead of starting another full pipeline.
@@ -315,7 +319,11 @@ async function computeAndCache(key: string, concept: string, city: string): Prom
       if (oldestKey) resultCache.delete(oldestKey);
     }
   }
-  resultCache.set(key, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+  // A result where the agent was enabled but fell back (Gemini overloaded or out of quota) is
+  // kept only briefly, so a transient outage doesn't pin the degraded version for half a day.
+  const degraded = (result.agent?.notes.length ?? 0) > 0;
+  const now = Date.now();
+  resultCache.set(key, { data: result, fetchedAt: now, expiresAt: now + (degraded ? DEGRADED_CACHE_TTL_MS : CACHE_TTL_MS) });
 
   return result;
 }

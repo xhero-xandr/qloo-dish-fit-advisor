@@ -168,10 +168,16 @@ an 86400s read timeout specifically so a slow-but-patient retry never gets
 cut off upstream. If Qloo raises this key's limits for the event, the app
 gets faster automatically — no code change needed.
 
-On top of that, identical concept+city requests are served from a 10-minute
-in-memory cache (`lib/pilot-package.ts`) instead of re-querying Qloo — a
-repeated click on the same preset or a page reload doesn't spend the shared
-monthly quota again on a request that already has a live answer. The
+On top of that, identical concept+city requests are served from an
+in-memory cache (`lib/pilot-package.ts`, 12 hours by default, configurable
+via `PILOT_CACHE_TTL_MINUTES`) instead of re-querying. The long default is
+deliberate: venue data doesn't change hour to hour, the free Gemini tier
+allows ~500 requests/day (~110 analyses at ~4.4 requests each), and most
+visitors click the same presets — so each preset costs quota once per half
+day, not once per visitor. A result where the agent fell back (Gemini
+overloaded or out of quota) is cached for only 10 minutes, so a brief outage
+doesn't pin the degraded version. The cache is in memory, so a restart
+clears it. The
 response is marked with `cachedAt` when this happens, and the UI discloses
 it rather than silently reusing data. Concurrent identical requests (a
 double-submit, a second tab) join the run already in progress instead of
