@@ -8,6 +8,20 @@ import { VenueCard } from "./VenueCard";
 export function Results({ result }: { result: PilotPackage }) {
   return (
     <div className="mt-10 flex flex-col gap-10">
+      {result.resolvedLocation && (
+        <p className="text-xs text-zinc-400">
+          Showing results for <span className="font-medium text-zinc-600 dark:text-zinc-300">{result.resolvedLocation}</span> — the
+          location Qloo actually geocoded &quot;{result.city}&quot; to. If that&apos;s not the city you meant, add a state/country
+          to disambiguate (e.g. &quot;Paris, TX&quot; vs &quot;Paris, France&quot;).
+        </p>
+      )}
+      {result.cachedAt && (
+        <p className="text-xs text-zinc-400">
+          Served from a short-lived cache (first fetched {new Date(result.cachedAt).toLocaleTimeString()}) — identical
+          concept+city requests reuse the same live Qloo result for 10 minutes instead of re-querying, to protect the
+          shared rate limit. No data is different; it&apos;s the same Qloo response.
+        </p>
+      )}
       {result.limitations.length > 0 && (
         <section className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
           <strong>Limitations</strong>

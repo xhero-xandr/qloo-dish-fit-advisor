@@ -38,6 +38,7 @@ export interface CulturalAffinity {
 export interface PilotPackage {
   concept: string;
   city: string;
+  resolvedLocation?: string;
   matchedTag?: { id: string; name: string; type: string };
   resolvedTags: { id: string; name: string; type: string }[];
   venues: VenueCandidate[];
@@ -49,6 +50,7 @@ export interface PilotPackage {
   pilotPlan: string[];
   ownerLetter: string;
   limitations: string[];
+  cachedAt?: string;
 }
 
 export type CityResult = { city: string; data?: PilotPackage; error?: string };

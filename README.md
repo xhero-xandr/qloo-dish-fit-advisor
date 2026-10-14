@@ -88,6 +88,13 @@ an 86400s read timeout specifically so a slow-but-patient retry never gets
 cut off upstream. If Qloo raises this key's limits for the event, the app
 gets faster automatically — no code change needed.
 
+On top of that, identical concept+city requests are served from a 10-minute
+in-memory cache (`lib/pilot-package.ts`) instead of re-querying Qloo — a
+repeated click on the same preset or a page reload doesn't spend the shared
+monthly quota again on a request that already has a live answer. The
+response is marked with `cachedAt` when this happens, and the UI discloses
+it rather than silently reusing data.
+
 ## Known limitations
 
 - The multi-city "Best fit" verdict is our own heuristic, not a Qloo score:

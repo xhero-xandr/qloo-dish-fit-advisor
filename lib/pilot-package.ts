@@ -35,6 +35,7 @@ export interface CulturalAffinity {
 export interface PilotPackage {
   concept: string;
   city: string;
+  resolvedLocation?: string;
   matchedTag?: { id: string; name: string; type: string };
   resolvedTags: { id: string; name: string; type: string }[];
   venues: VenueCandidate[];
@@ -46,6 +47,8 @@ export interface PilotPackage {
   pilotPlan: string[];
   ownerLetter: string;
   limitations: string[];
+  /** ISO timestamp — present only when this result was served from the short-lived cache instead of a fresh Qloo round-trip. */
+  cachedAt?: string;
 }
 
 const AGE_BUCKETS = ["24_and_younger", "25_to_29", "30_to_34", "35_to_44", "45_to_54", "55_and_older"] as const;
@@ -201,7 +204,46 @@ function isRateLimitError(error: unknown): boolean {
   return error instanceof Error && error.message.includes("429");
 }
 
+/** What Qloo actually geocoded the city query to, so a bare/ambiguous name (e.g. "Paris") doesn't silently resolve to the wrong place. */
+function describeResolvedLocation(place?: QlooPlace): string | undefined {
+  const geo = place?.properties?.geocode;
+  if (!geo?.city) return undefined;
+  const region = geo.admin1_region && geo.admin1_region !== geo.city ? geo.admin1_region : undefined;
+  return [geo.city, region, geo.country].filter(Boolean).join(", ");
+}
+
+const CACHE_TTL_MS = 10 * 60 * 1000; // identical concept+city requests reuse this instead of burning the shared monthly Qloo quota
+const CACHE_MAX_ENTRIES = 200;
+const resultCache = new Map<string, { data: PilotPackage; expiresAt: number }>();
+
+function cacheKey(concept: string, city: string): string {
+  return `${concept.trim().toLowerCase()}::${city.trim().toLowerCase()}`;
+}
+
 export async function buildPilotPackage(concept: string, city: string): Promise<PilotPackage> {
+  const key = cacheKey(concept, city);
+  const cached = resultCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { ...cached.data, cachedAt: new Date(cached.expiresAt - CACHE_TTL_MS).toISOString() };
+  }
+
+  const result = await buildPilotPackageUncached(concept, city);
+
+  if (resultCache.size >= CACHE_MAX_ENTRIES) {
+    for (const [k, v] of resultCache) {
+      if (v.expiresAt <= Date.now()) resultCache.delete(k);
+    }
+    if (resultCache.size >= CACHE_MAX_ENTRIES) {
+      const oldestKey = resultCache.keys().next().value;
+      if (oldestKey) resultCache.delete(oldestKey);
+    }
+  }
+  resultCache.set(key, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+
+  return result;
+}
+
+async function buildPilotPackageUncached(concept: string, city: string): Promise<PilotPackage> {
   const limitations: string[] = [];
 
   const queries = [concept, ...extractKeywords(concept)];
@@ -337,6 +379,7 @@ export async function buildPilotPackage(concept: string, city: string): Promise<
   return {
     concept,
     city,
+    resolvedLocation: describeResolvedLocation(topPlaces[0]),
     matchedTag: places.length > 0 ? primaryTag : undefined,
     resolvedTags: candidateTags,
     venues,
