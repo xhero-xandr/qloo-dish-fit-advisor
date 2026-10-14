@@ -163,7 +163,11 @@ async function callOnce(model: string, request: GeminiRequest): Promise<CallOutc
   }
 
   if (res.ok) {
-    const data = (await res.json()) as { candidates?: { content?: { parts?: GeminiPart[] } }[] };
+    const data = (await res.json()) as {
+      candidates?: { content?: { parts?: GeminiPart[] } }[];
+      usageMetadata?: { totalTokenCount?: number };
+    };
+    if (process.env.GEMINI_DEBUG) console.info(`[gemini] tokens ${model} ${data.usageMetadata?.totalTokenCount ?? "?"}`);
     const parts = data.candidates?.[0]?.content?.parts;
     if (!parts || parts.length === 0) return { kind: "retryable", reason: "empty response" };
     return { kind: "ok", parts };
