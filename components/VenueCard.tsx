@@ -24,6 +24,7 @@ export function VenueCard({ venue, rank }: { venue: VenueCandidate; rank: number
           </div>
         </div>
         {venue.address && <p className="mt-1 text-xs text-zinc-500">{venue.address}</p>}
+        {venue.hours && <p className="mt-0.5 text-xs text-zinc-400">🕑 {venue.hours}</p>}
         {venue.description && <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{venue.description}</p>}
         {venue.dietaryOptions.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">

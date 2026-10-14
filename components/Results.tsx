@@ -1,3 +1,5 @@
+import { AgentPanel } from "./AgentPanel";
+import { Citations } from "./Citations";
 import { CulturalAffinityPanel } from "./CulturalAffinity";
 import { DemographicsChart } from "./DemographicsChart";
 import { Section } from "./Section";
@@ -5,7 +7,17 @@ import { TextBlock } from "./TextBlock";
 import type { PilotPackage } from "./types";
 import { VenueCard } from "./VenueCard";
 
+function StepNumber({ n }: { n: number }) {
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-semibold text-white dark:bg-white dark:text-zinc-900">
+      {n}
+    </span>
+  );
+}
+
 export function Results({ result }: { result: PilotPackage }) {
+  const agentPlan = result.agent?.analysis?.pilotPlan ?? [];
+  const facts = new Map((result.agent?.facts ?? []).map((f) => [f.id, f]));
   return (
     <div className="mt-10 flex flex-col gap-10">
       {result.resolvedLocation && (
@@ -44,6 +56,8 @@ export function Results({ result }: { result: PilotPackage }) {
           </p>
         </section>
       )}
+
+      {result.agent && <AgentPanel agent={result.agent} />}
 
       {result.aggregateDemographics && (
         <Section title="Audience affinity profile" subtitle={`Averaged across ${result.venues.length} matched venues`}>
@@ -84,7 +98,7 @@ export function Results({ result }: { result: PilotPackage }) {
       {result.culturalAffinity && (
         <Section
           title="Cultural affinity (beyond food)"
-          subtitle="Cross-domain Qloo graph signal — same audience, different categories"
+          subtitle="Cross-domain Qloo graph signal seeded with the matched venues — their audience, other categories"
         >
           <CulturalAffinityPanel data={result.culturalAffinity} />
         </Section>
@@ -94,18 +108,32 @@ export function Results({ result }: { result: PilotPackage }) {
         <TextBlock text={result.tastingBrief} />
       </Section>
 
-      <Section title="4-week pilot plan">
-        <ol className="flex flex-col gap-2">
-          {result.pilotPlan.map((step, i) => (
-            <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-semibold text-white dark:bg-white dark:text-zinc-900">
-                {i + 1}
-              </span>
-              {step}
-            </li>
-          ))}
-        </ol>
-      </Section>
+      {agentPlan.length > 0 ? (
+        <Section title="Pilot plan" subtitle="Written by the agent from the cited Qloo facts">
+          <ol className="flex flex-col gap-2.5">
+            {agentPlan.map((step, i) => (
+              <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                <StepNumber n={i + 1} />
+                <span>
+                  <strong className="font-medium text-zinc-900 dark:text-zinc-100">{step.when}:</strong> {step.text}
+                  <Citations ids={step.facts} facts={facts} />
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      ) : (
+        <Section title="4-week pilot plan" subtitle="Generic template — the same steps for every concept">
+          <ol className="flex flex-col gap-2">
+            {result.pilotPlan.map((step, i) => (
+              <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                <StepNumber n={i + 1} />
+                {step}
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
 
       <div className="no-print">
         <Section title="Venue owner outreach letter">

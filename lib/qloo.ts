@@ -24,6 +24,9 @@ const MIN_SPACING_MS = 260; // ~3.8 req/s, safely under the 5 req/s cap
 const MAX_RATE_LIMIT_RETRIES = 12; // worst case ~30-40s of waiting before giving up
 let requestChain: Promise<void> = Promise.resolve();
 
+/** Qloo refused for quota reasons — callers must propagate it rather than treat it as "no results". */
+export class QlooQuotaError extends Error {}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -60,13 +63,13 @@ async function qlooGet<T>(path: string, params: Record<string, string | number |
 
     if (res.status === 429) {
       if (res.headers.get("x-month-ratelimit-remaining") === "0") {
-        throw new Error("Qloo monthly request quota for this API key is exhausted — retrying won't help until it resets.");
+        throw new QlooQuotaError("Qloo monthly request quota for this API key is exhausted — retrying won't help until it resets.");
       }
       if (attempt < MAX_RATE_LIMIT_RETRIES) {
         await sleep(retryDelayMs(res, attempt));
         continue;
       }
-      throw new Error("Qloo rate limit hit (429) repeatedly — the shared hackathon key allows only ~5 requests/second. Please wait a bit and try again.");
+      throw new QlooQuotaError("Qloo rate limit hit (429) repeatedly — the shared hackathon key allows only ~5 requests/second. Please wait a bit and try again.");
     }
     const body = await res.text().catch(() => "");
     throw new Error(`Qloo API ${res.status} on ${path}: ${body.slice(0, 300)}`);
@@ -101,9 +104,10 @@ export interface QlooPlace {
     business_rating?: number;
     price_level?: number | null;
     geocode?: { city?: string; metro?: string; admin1_region?: string; country?: string };
-    hours?: Record<string, { opens: string; closes: string; closed: boolean }[]>;
+    hours?: Record<string, { opens: string | null; closes: string | null; closed: boolean }[]>;
     website?: string;
     phone?: string;
+    is_closed?: boolean;
     image?: { url?: string };
     keywords?: { name: string; count: number }[];
   };
@@ -153,18 +157,23 @@ export interface CrossDomainEntity {
 }
 
 /**
- * Entities in a *different* domain (brands, TV shows, ...) that the same
- * taste-signal audience tends toward — this is what actually makes the app
- * use Qloo as a cross-domain taste *graph* rather than a single-category
- * lookup table. No other data source can answer "what do izakaya fans also
- * watch/buy" the way this can.
+ * Entities in a *different* domain (brands, TV shows, ...) that the audience
+ * of the given entities tends toward — "what do regulars of these venues also
+ * watch/buy".
  */
-export async function recommendByTags(tagIds: string[], targetType: string, location: string, take = 5): Promise<CrossDomainEntity[]> {
-  // Without a location signal the graph answers for the tag's global audience
-  // (e.g. izakaya -> Japanese brands), which is useless for a pilot in Austin.
+export async function recommendByEntities(
+  entityIds: string[],
+  targetType: string,
+  location: string,
+  take = 5
+): Promise<CrossDomainEntity[]> {
+  // Seeding with the matched venues themselves describes *their* audience. Seeding with a
+  // tag instead degrades badly: a broad tag without location returns the tag's global
+  // audience (izakaya -> Japanese brands), and a narrow tag with location returns generic
+  // city culture (korean_fried_chicken + NYC -> The New Yorker, MoMA).
   const data = await qlooGet<{ results: { entities: CrossDomainEntity[] } }>("/v2/insights", {
     "filter.type": targetType,
-    "signal.interests.tags": tagIds.join(","),
+    "signal.interests.entities": entityIds.join(","),
     "signal.location.query": location,
     take,
   });

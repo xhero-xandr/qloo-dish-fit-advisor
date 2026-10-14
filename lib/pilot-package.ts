@@ -1,4 +1,15 @@
-import { findTags, findPlacesByTags, audienceDemographics, recommendByTags, type QlooPlace, type DemographicsResult, type CrossDomainEntity } from "./qloo";
+import {
+  findTags,
+  findPlacesByTags,
+  audienceDemographics,
+  recommendByEntities,
+  QlooQuotaError,
+  type QlooPlace,
+  type DemographicsResult,
+  type CrossDomainEntity,
+} from "./qloo";
+import { isGeminiConfigured } from "./gemini";
+import { planTagsWithAgent, synthesizeWithAgent, type AgentAnalysis, type AgentTagDecision, type Fact } from "./agent";
 
 export interface VenueCandidate {
   name: string;
@@ -9,6 +20,7 @@ export interface VenueCandidate {
   description?: string;
   website?: string;
   imageUrl?: string;
+  hours?: string;
   vibeTags: string[];
   dietaryOptions: string[];
   demographics?: DemographicsResult;
@@ -32,6 +44,15 @@ export interface CulturalAffinity {
   podcasts: CulturalSignalItem[];
 }
 
+export interface AgentOutput {
+  tagDecision?: AgentTagDecision;
+  analysis?: AgentAnalysis;
+  /** The exact Qloo-derived fact sheet the analysis step was given and had to cite. */
+  facts: Fact[];
+  /** Why a step fell back to the deterministic path, if it did. */
+  notes: string[];
+}
+
 export interface PilotPackage {
   concept: string;
   city: string;
@@ -41,6 +62,7 @@ export interface PilotPackage {
   aggregateDemographics?: DemographicsResult;
   regionInsights: RegionInsight[];
   culturalAffinity?: CulturalAffinity;
+  agent?: AgentOutput;
   tastingBrief: string;
   pilotPlan: string[];
   ownerLetter: string;
@@ -50,6 +72,14 @@ export interface PilotPackage {
 }
 
 const AGE_BUCKETS = ["24_and_younger", "25_to_29", "30_to_34", "35_to_44", "45_to_54", "55_and_older"] as const;
+const AGE_LABEL: Record<string, string> = {
+  "24_and_younger": "24 and younger",
+  "25_to_29": "25–29",
+  "30_to_34": "30–34",
+  "35_to_44": "35–44",
+  "45_to_54": "45–54",
+  "55_and_older": "55+",
+};
 
 /** Average per-venue affinity scores into one aggregate audience profile for the hero chart. */
 function aggregateDemographics(venues: VenueCandidate[]): DemographicsResult | undefined {
@@ -106,18 +136,63 @@ function extractDietaryOptions(tags: { id: string; name: string; type: string }[
   return tags.filter((t) => t.type === DIETARY_TAG_TYPE).map((t) => t.name);
 }
 
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+const DAY_SHORT: Record<string, string> = {
+  monday: "Mon",
+  tuesday: "Tue",
+  wednesday: "Wed",
+  thursday: "Thu",
+  friday: "Fri",
+  saturday: "Sat",
+  sunday: "Sun",
+};
+
+/** "Mon closed; Tue–Sun 17:00–23:00" from Qloo's per-day hours, or undefined if Qloo has none. */
+function formatHours(hours: NonNullable<QlooPlace["properties"]["hours"]> | undefined): string | undefined {
+  if (!hours) return undefined;
+  const perDay = DAYS.map((day) => {
+    const slots = hours[day];
+    if (!slots || slots.length === 0) return "unknown";
+    if (slots.every((s) => s.closed)) return "closed";
+    const open = slots
+      .filter((s) => !s.closed && s.opens && s.closes)
+      .map((s) => `${s.opens!.replace(/^T/, "").slice(0, 5)}–${s.closes!.replace(/^T/, "").slice(0, 5)}`);
+    return open.length > 0 ? open.join(", ") : "unknown";
+  });
+  if (perDay.every((t) => t === "unknown")) return undefined;
+
+  const groups: { from: string; to: string; text: string }[] = [];
+  DAYS.forEach((day, i) => {
+    const last = groups[groups.length - 1];
+    if (last && last.text === perDay[i]) last.to = day;
+    else groups.push({ from: day, to: day, text: perDay[i] });
+  });
+  return groups
+    .map((g) => `${g.from === g.to ? DAY_SHORT[g.from] : `${DAY_SHORT[g.from]}–${DAY_SHORT[g.to]}`} ${g.text}`)
+    .join("; ");
+}
+
 /**
- * Cross-domain taste signal: what the audience for the matched cuisine tag,
- * *in this city*, tends toward in brands, TV shows, artists, and podcasts —
- * "what do izakaya fans in Austin also watch/listen to/buy".
+ * Drop venues that can't host a pilot. Qloo's `is_closed` isn't enough on its own: some
+ * listings have is_closed=false while every day of the week is marked closed (seen live,
+ * e.g. a soul-food spot in Atlanta) — almost certainly a shut venue with a stale flag.
  */
-async function fetchCulturalAffinity(tagId: string, city: string): Promise<CulturalAffinity | undefined> {
+function isOperating(place: QlooPlace): boolean {
+  if (place.properties?.is_closed) return false;
+  const hours = place.properties?.hours;
+  if (!hours) return true;
+  const days = Object.values(hours);
+  return !(days.length > 0 && days.every((slots) => slots.length > 0 && slots.every((s) => s.closed)));
+}
+
+/** What the audience of the matched venues also favors in brands, TV shows, artists, and podcasts. */
+async function fetchCulturalAffinity(venueIds: string[], city: string): Promise<CulturalAffinity | undefined> {
   try {
     const [brands, tvShows, artists, podcasts] = await Promise.all([
-      recommendByTags([tagId], "urn:entity:brand", city, 5),
-      recommendByTags([tagId], "urn:entity:tv_show", city, 5),
-      recommendByTags([tagId], "urn:entity:artist", city, 5),
-      recommendByTags([tagId], "urn:entity:podcast", city, 5),
+      recommendByEntities(venueIds, "urn:entity:brand", city, 5),
+      recommendByEntities(venueIds, "urn:entity:tv_show", city, 5),
+      recommendByEntities(venueIds, "urn:entity:artist", city, 5),
+      recommendByEntities(venueIds, "urn:entity:podcast", city, 5),
     ]);
     if (brands.length === 0 && tvShows.length === 0 && artists.length === 0 && podcasts.length === 0) return undefined;
     return {
@@ -176,7 +251,7 @@ function extractKeywords(concept: string): string[] {
 export class ConceptNotFoundError extends Error {}
 
 function isRateLimitError(error: unknown): boolean {
-  return error instanceof Error && error.message.includes("429");
+  return error instanceof QlooQuotaError;
 }
 
 /** What Qloo actually geocoded the city query to, so a bare/ambiguous name (e.g. "Paris") doesn't silently resolve to the wrong place. */
@@ -233,9 +308,13 @@ async function computeAndCache(key: string, concept: string, city: string): Prom
   return result;
 }
 
-async function buildPilotPackageUncached(concept: string, city: string): Promise<PilotPackage> {
-  const limitations: string[] = [];
+type Tag = { id: string; name: string; type: string };
 
+/** Fallback when the agent is unavailable: stopword keywords + type-weighted ranking. */
+async function resolveTagDeterministically(
+  concept: string,
+  findVenues: (tagId: string) => Promise<QlooPlace[]>
+): Promise<{ primaryTag: Tag; places: QlooPlace[]; triedTagNames: string[] }> {
   const queries = [concept, ...extractKeywords(concept)];
   const tagResults = await Promise.all(
     queries.map(async (q) => {
@@ -247,41 +326,147 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
       }
     })
   );
-  const candidateTags = Array.from(
-    new Map(tagResults.flat().map((t) => [t.id, t])).values()
-  );
-
+  const candidateTags = Array.from(new Map(tagResults.flat().map((t) => [t.id, t])).values());
   if (candidateTags.length === 0) {
-    throw new ConceptNotFoundError(`Qloo couldn't find a taste tag close to "${concept}". Try rephrasing the concept (e.g. a specific cuisine or dish type).`);
+    throw new ConceptNotFoundError(
+      `Qloo couldn't find a taste tag close to "${concept}". Try rephrasing the concept (e.g. a specific cuisine or dish type).`
+    );
   }
 
   const rankedTags = rankTagsForPlaceMatching(candidateTags);
-  let places: QlooPlace[] = [];
-  let primaryTag = rankedTags[0];
   const triedTagNames: string[] = [];
-
   for (const tag of rankedTags.slice(0, 4)) {
     triedTagNames.push(tag.name);
     try {
-      const found = await findPlacesByTags([tag.id], city, 8);
-      if (found.length > 0) {
-        // The insights API does not return these ordered by relevance to the tag,
-        // so use rating as a proxy for venue quality until a sharper signal is wired in.
-        places = [...found].sort((a, b) => (b.properties?.business_rating ?? 0) - (a.properties?.business_rating ?? 0));
-        primaryTag = tag;
-        break;
-      }
+      const found = await findVenues(tag.id);
+      if (found.length > 0) return { primaryTag: tag, places: found, triedTagNames };
     } catch (error) {
       if (isRateLimitError(error)) throw error;
-      // try the next candidate tag
+    }
+  }
+  return { primaryTag: rankedTags[0], places: [], triedTagNames };
+}
+
+function signed(n: number): string {
+  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}`;
+}
+
+function describeDemographicsFact(d: DemographicsResult): string {
+  const ages = AGE_BUCKETS.filter((b) => typeof d.age?.[b] === "number")
+    .map((b) => `${AGE_LABEL[b]} ${signed(d.age[b])}`)
+    .join(", ");
+  return `age affinity ${ages}; gender affinity male ${signed(d.gender?.male ?? 0)}, female ${signed(d.gender?.female ?? 0)} (Qloo affinity vs. general population)`;
+}
+
+/** Number every Qloo-derived datum so the analysis step can cite it and code can verify the citations. */
+function buildFacts(input: {
+  city: string;
+  primaryTag: Tag;
+  secondary: AgentTagDecision["secondary"];
+  venues: VenueCandidate[];
+  aggregate?: DemographicsResult;
+  regionInsights: RegionInsight[];
+  culturalAffinity?: CulturalAffinity;
+}): Fact[] {
+  const facts: Fact[] = [];
+  const add = (text: string) => facts.push({ id: `F${facts.length + 1}`, text });
+
+  add(`Venues were found via the Qloo tag "${input.primaryTag.name}" (${input.primaryTag.type.replace("urn:tag:", "")}).`);
+  for (const v of input.venues) {
+    const price = v.priceLevel ? "$".repeat(v.priceLevel) : "n/a";
+    add(`Venue "${v.name}": rating ${v.rating?.toFixed(1) ?? "n/a"}, price level ${price}${v.address ? `, address ${v.address}` : ""}.`);
+    if (v.hours) add(`Venue "${v.name}" opening hours: ${v.hours}.`);
+    if (v.dietaryOptions.length > 0) add(`Venue "${v.name}" dietary options listed by Qloo: ${v.dietaryOptions.join(", ")}.`);
+    if (v.vibeTags.length > 0) add(`Venue "${v.name}" Qloo tags: ${v.vibeTags.join(", ")}.`);
+    if (v.demographics) add(`Venue "${v.name}" audience: ${describeDemographicsFact(v.demographics)}.`);
+  }
+  if (input.aggregate) add(`Averaged across the matched venues, audience ${describeDemographicsFact(input.aggregate)}.`);
+  if (input.regionInsights.length > 0) {
+    add(
+      `Most-mentioned review keywords for these venues: ${input.regionInsights
+        .slice(0, 10)
+        .map((r) => `${r.keyword} (${r.mentions})`)
+        .join(", ")}.`
+    );
+  }
+  const ca = input.culturalAffinity;
+  if (ca) {
+    const groups: [string, CulturalSignalItem[]][] = [
+      ["brands", ca.brands],
+      ["TV shows", ca.tvShows],
+      ["music artists", ca.artists],
+      ["podcasts", ca.podcasts],
+    ];
+    for (const [label, items] of groups) {
+      if (items.length > 0) {
+        add(`The audience of these matched venues also over-indexes on these ${label}: ${items.map((i) => i.name).join(", ")}.`);
+      }
+    }
+  }
+  for (const s of input.secondary) {
+    if (s.venueCount !== undefined) {
+      add(
+        `Secondary concept signal "${s.name}": ${s.venueCount} venue(s) in ${input.city} carry this Qloo tag${
+          s.venueNames && s.venueNames.length > 0 ? `, e.g. ${s.venueNames.join(", ")}` : ""
+        }.`
+      );
+    } else {
+      add(`Part of the concept also maps to the Qloo tag "${s.name}" (venues for it were not checked).`);
+    }
+  }
+  return facts;
+}
+
+function shortError(error: unknown): string {
+  return (error instanceof Error ? error.message : "unknown error").slice(0, 160);
+}
+
+async function buildPilotPackageUncached(concept: string, city: string): Promise<PilotPackage> {
+  const limitations: string[] = [];
+  const agentEnabled = isGeminiConfigured();
+  const agentNotes: string[] = [];
+
+  // One place lookup per tag per analysis, shared by the agent's tool calls and the pipeline.
+  const venueLookups = new Map<string, Promise<QlooPlace[]>>();
+  const findVenues = (tagId: string): Promise<QlooPlace[]> => {
+    let lookup = venueLookups.get(tagId);
+    if (!lookup) {
+      lookup = findPlacesByTags([tagId], city, 8).then((found) => found.filter(isOperating));
+      venueLookups.set(tagId, lookup);
+      lookup.catch(() => venueLookups.delete(tagId));
+    }
+    return lookup;
+  };
+
+  let tagDecision: AgentTagDecision | undefined;
+  if (agentEnabled) {
+    try {
+      tagDecision = await planTagsWithAgent(concept, city, findVenues);
+    } catch (error) {
+      if (isRateLimitError(error)) throw error;
+      agentNotes.push(`Agent tag selection fell back to deterministic ranking: ${shortError(error)}`);
     }
   }
 
-  if (places.length === 0) {
-    limitations.push(
-      `Qloo found no venues in "${city}" for any of the tags related to "${concept}" (tried: ${triedTagNames.join(", ")}). The city may be misspelled, or the niche may be too narrow for this region.`
-    );
+  let primaryTag: Tag;
+  let places: QlooPlace[];
+  if (tagDecision) {
+    primaryTag = { id: tagDecision.primary.id, name: tagDecision.primary.name, type: tagDecision.primary.type };
+    places = await findVenues(primaryTag.id);
+  } else {
+    const resolved = await resolveTagDeterministically(concept, findVenues);
+    primaryTag = resolved.primaryTag;
+    places = resolved.places;
+    if (places.length === 0) {
+      limitations.push(
+        `Qloo found no venues in "${city}" for any of the tags related to "${concept}" (tried: ${resolved.triedTagNames.join(", ")}). The city may be misspelled, or the niche may be too narrow for this region.`
+      );
+    }
   }
+
+  // The insights API does not return these ordered by relevance to the tag,
+  // so use rating as a proxy for venue quality until a sharper signal is wired in.
+  places = [...places].sort((a, b) => (b.properties?.business_rating ?? 0) - (a.properties?.business_rating ?? 0));
 
   const topPlaces = places.slice(0, 4);
   const venues: VenueCandidate[] = await Promise.all(
@@ -302,6 +487,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
         description: p.properties?.short_description ?? p.properties?.description,
         website: p.properties?.website,
         imageUrl: p.properties?.image?.url,
+        hours: formatHours(p.properties?.hours),
         vibeTags: (p.tags ?? []).filter((t) => t.type !== DIETARY_TAG_TYPE).slice(0, 6).map((t) => t.name),
         dietaryOptions: extractDietaryOptions(p.tags ?? []),
         demographics: demo,
@@ -309,9 +495,33 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     })
   );
 
+  const aggregate = aggregateDemographics(venues);
   const vibeWords = Array.from(new Set(venues.flatMap((v) => v.vibeTags))).slice(0, 10);
   const regionInsights = aggregateRegionInsights(topPlaces);
-  const culturalAffinity = primaryTag && places.length > 0 ? await fetchCulturalAffinity(primaryTag.id, city) : undefined;
+  const culturalAffinity =
+    topPlaces.length > 0 ? await fetchCulturalAffinity(topPlaces.map((p) => p.entity_id), city) : undefined;
+
+  let agent: AgentOutput | undefined;
+  if (agentEnabled) {
+    const facts = buildFacts({
+      city,
+      primaryTag,
+      secondary: tagDecision?.secondary ?? [],
+      venues,
+      aggregate,
+      regionInsights,
+      culturalAffinity,
+    });
+    let analysis: AgentAnalysis | undefined;
+    if (venues.length > 0) {
+      try {
+        analysis = await synthesizeWithAgent(concept, city, facts, venues.map((v) => v.name));
+      } catch (error) {
+        agentNotes.push(`Agent analysis unavailable, showing the template plan: ${shortError(error)}`);
+      }
+    }
+    agent = { tagDecision, analysis, facts, notes: agentNotes };
+  }
 
   const tastingBrief = [
     `Tasting concept: "${concept}"`,
@@ -331,7 +541,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     "Week 4: review results — decide whether to go to a permanent menu, revise the concept, or switch venue/audience.",
   ];
 
-  const bestVenue = venues[0];
+  const bestVenue = venues.find((v) => v.name === agent?.analysis?.recommendedVenue?.name) ?? venues[0];
   const ownerLetter = bestVenue
     ? [
         bestVenue.phone
@@ -359,9 +569,10 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     resolvedLocation: describeResolvedLocation(topPlaces[0]),
     matchedTag: places.length > 0 ? primaryTag : undefined,
     venues,
-    aggregateDemographics: aggregateDemographics(venues),
+    aggregateDemographics: aggregate,
     regionInsights,
     culturalAffinity,
+    agent,
     tastingBrief,
     pilotPlan,
     ownerLetter,
