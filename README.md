@@ -92,20 +92,44 @@ free-text concept and city the user types.
 `lib/agent.ts`, `lib/gemini.ts`. Gemini is called server-side through the
 REST `generateContent` API with function calling and JSON-schema output.
 
-- **Model chain:** `gemini-3.5-flash-lite` first, `gemini-3.8-flash` as an
-  overload fallback (configurable via `GEMINI_MODELS`). The order is from
-  measurement, not preference: in testing, flash-lite answered tool turns
-  in under a second, while 3.8-flash and 3.6-flash mostly returned 503,
-  hung past 90s, or took ~55s per turn — too slow for a multi-turn tool
-  loop. Each call times out after 20s; a model that fails is skipped for
-  60s. A tool conversation is pinned to one model (thought signatures don't
-  transfer between models); if that model drops out mid-conversation, the
-  conversation restarts on the next model, reusing the Qloo lookups
-  already made.
-- **Grounding:** the model can only reach Qloo through the two tools; tag
-  ids it returns are checked against what the tools returned; analysis items
+- **Model:** `gemini-3.5-flash-lite` (configurable via `GEMINI_MODELS`,
+  a comma-separated fallback chain). Chosen by measurement: it answered
+  tool turns in under a second, while 3.8-flash and 3.6-flash mostly
+  returned 503, hung past 90s, or took ~55s per turn — and on the free tier
+  3.8-flash allows only 20 requests/day.
+- **Free-tier quota, handled by queueing:** the key's quota is 15
+  requests/minute per model (read from Google's own 429 `QuotaFailure`
+  details). One analysis averages ~4.4 Gemini requests (measured over 10
+  runs), so a burst of users would exceed it. Calls are queued at 14/minute
+  instead of failing — the same "let it wait" policy as the Qloo client —
+  so under load an analysis gets slower (measured 14–70s during a
+  back-to-back test run) rather than silently losing the agent. A 429
+  asking to wait ≤65s is waited out; a per-day quota skips that model
+  until it resets. Enabling billing on the Google project removes the
+  wait; no code change needed.
+- **Fewer requests per analysis:** the tag agent submits its choice through
+  a `submit_choice` tool call in the same loop rather than a separate JSON
+  turn, and batches independent tool calls per turn.
+- **Grounding:** the model can only reach Qloo through the tools; tag ids
+  it returns are checked against what the tools returned; analysis items
   must cite numbered facts and are dropped if they don't; the recommended
-  venue must be one of the matched venues.
+  venue must be one of the matched venues and must cite at least one fact
+  about *that* venue (citing another venue's facts is stripped).
+- **The agent can't do worse than the baseline:** if its primary tag has
+  fewer than 3 operating venues, code runs the deterministic tag ranking
+  and keeps whichever tag has more venues — visibly, as "Overruled by
+  code", with the agent's pick kept as a secondary signal. Added after the
+  agent anchored "Neapolitan sourdough pizza" in Portland on a tag with one
+  venue, which turned out to be a Detroit-style pizzeria, while the
+  baseline tag had four Neapolitan pizzerias.
+- **Honest fit:** the verdict carries a strong / moderate / weak fit rating,
+  and the model is told to compare the concept's style with each venue's
+  own tags and review keywords (given per venue, not just summed). In the
+  last evaluation round — 5 concepts × 2 runs, all 10 completed by the
+  agent — it rated vegan soul food in Atlanta "moderate" because the
+  matched soul-food venues' reviews center on fried chicken and pork chops,
+  and Korean fried chicken with natural wine in Chicago "moderate" because
+  no matched venue carries natural wine.
 - **What the checks can't do:** they verify that a citation exists, not that
   the claim follows from it. The UI says this and makes every citation
   tappable so a reader can check.
@@ -116,10 +140,11 @@ REST `generateContent` API with function calling and JSON-schema output.
 - **Tuned from live runs, not just written:** the first versions scheduled a
   "pilot" across a venue's whole opening hours for a month, claimed foot
   traffic Qloo doesn't have, and anchored on a tag with a single venue. The
-  prompts now fix the format (one tasting night at one venue), forbid
-  foot-traffic/sales/menu-price/wine-list claims, require a primary tag with
-  at least 3 venues, and require the thin-evidence and unsupported-secondary
-  signals to be stated as risks.
+  prompts now fix the format (one tasting night at one venue, on an evening
+  the venue is open), forbid foot-traffic/sales/menu-price/wine-list claims,
+  and require the thin-evidence and unsupported-secondary signals to be
+  stated as risks; the 3-venue minimum is enforced in code, since the model
+  ignored it when it was only in the prompt.
 
 Venues that can't host a pilot are filtered before anyone sees them:
 Qloo's `is_closed`, plus listings with every day of the week marked closed —

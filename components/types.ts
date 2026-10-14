@@ -8,7 +8,7 @@ export type {
   RegionInsight,
   VenueCandidate,
 } from "@/lib/pilot-package";
-export type { CitedItem, Fact } from "@/lib/agent";
+export type { CitedItem, Fact, Fit } from "@/lib/agent";
 export type { DemographicsResult as Demographics } from "@/lib/qloo";
 
 export type CityResult = { city: string; data?: PilotPackage; error?: string };

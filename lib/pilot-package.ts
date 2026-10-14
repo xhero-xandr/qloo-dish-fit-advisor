@@ -5,11 +5,19 @@ import {
   recommendByEntities,
   QlooQuotaError,
   type QlooPlace,
+  type QlooTag,
   type DemographicsResult,
   type CrossDomainEntity,
 } from "./qloo";
 import { isGeminiConfigured } from "./gemini";
-import { planTagsWithAgent, synthesizeWithAgent, type AgentAnalysis, type AgentTagDecision, type Fact } from "./agent";
+import {
+  planTagsWithAgent,
+  synthesizeWithAgent,
+  type AgentAnalysis,
+  type AgentTagDecision,
+  type Fact,
+  type SearchTags,
+} from "./agent";
 
 export interface VenueCandidate {
   name: string;
@@ -23,6 +31,7 @@ export interface VenueCandidate {
   hours?: string;
   vibeTags: string[];
   dietaryOptions: string[];
+  reviewKeywords: RegionInsight[];
   demographics?: DemographicsResult;
 }
 
@@ -262,6 +271,9 @@ function describeResolvedLocation(place?: QlooPlace): string | undefined {
   return [geo.city, region, geo.country].filter(Boolean).join(", ");
 }
 
+/** A pilot needs candidates to choose between; fewer than this and the agent's tag must beat the baseline's. */
+const MIN_PILOT_VENUES = 3;
+
 const CACHE_TTL_MS = 10 * 60 * 1000; // identical concept+city requests reuse this instead of burning the shared monthly Qloo quota
 const CACHE_MAX_ENTRIES = 200;
 const resultCache = new Map<string, { data: PilotPackage; expiresAt: number }>();
@@ -310,16 +322,17 @@ async function computeAndCache(key: string, concept: string, city: string): Prom
 
 type Tag = { id: string; name: string; type: string };
 
-/** Fallback when the agent is unavailable: stopword keywords + type-weighted ranking. */
+/** Baseline tag choice: stopword keywords + type-weighted ranking. Also the floor the agent must beat. */
 async function resolveTagDeterministically(
   concept: string,
-  findVenues: (tagId: string) => Promise<QlooPlace[]>
+  findVenues: (tagId: string) => Promise<QlooPlace[]>,
+  searchTags: SearchTags
 ): Promise<{ primaryTag: Tag; places: QlooPlace[]; triedTagNames: string[] }> {
   const queries = [concept, ...extractKeywords(concept)];
   const tagResults = await Promise.all(
     queries.map(async (q) => {
       try {
-        return await findTags(q, 8);
+        return await searchTags(q);
       } catch (error) {
         if (isRateLimitError(error)) throw error;
         return [];
@@ -369,21 +382,28 @@ function buildFacts(input: {
   culturalAffinity?: CulturalAffinity;
 }): Fact[] {
   const facts: Fact[] = [];
-  const add = (text: string) => facts.push({ id: `F${facts.length + 1}`, text });
+  const add = (text: string, venue?: string) => facts.push({ id: `F${facts.length + 1}`, text, venue });
+  const n = input.venues.length;
 
-  add(`Venues were found via the Qloo tag "${input.primaryTag.name}" (${input.primaryTag.type.replace("urn:tag:", "")}).`);
+  add(`Venues were found via the Qloo tag "${input.primaryTag.name}" (${input.primaryTag.type.replace("urn:tag:", "")}); ${n} operating venue(s) matched.`);
   for (const v of input.venues) {
     const price = v.priceLevel ? "$".repeat(v.priceLevel) : "n/a";
-    add(`Venue "${v.name}": rating ${v.rating?.toFixed(1) ?? "n/a"}, price level ${price}${v.address ? `, address ${v.address}` : ""}.`);
-    if (v.hours) add(`Venue "${v.name}" opening hours: ${v.hours}.`);
-    if (v.dietaryOptions.length > 0) add(`Venue "${v.name}" dietary options listed by Qloo: ${v.dietaryOptions.join(", ")}.`);
-    if (v.vibeTags.length > 0) add(`Venue "${v.name}" Qloo tags: ${v.vibeTags.join(", ")}.`);
-    if (v.demographics) add(`Venue "${v.name}" audience: ${describeDemographicsFact(v.demographics)}.`);
+    add(`Venue "${v.name}": rating ${v.rating?.toFixed(1) ?? "n/a"}, price level ${price}${v.address ? `, address ${v.address}` : ""}.`, v.name);
+    if (v.hours) add(`Venue "${v.name}" opening hours: ${v.hours}.`, v.name);
+    if (v.dietaryOptions.length > 0) add(`Venue "${v.name}" dietary options listed by Qloo: ${v.dietaryOptions.join(", ")}.`, v.name);
+    if (v.vibeTags.length > 0) add(`Venue "${v.name}" Qloo tags: ${v.vibeTags.join(", ")}.`, v.name);
+    if (v.reviewKeywords.length > 0) {
+      add(
+        `Venue "${v.name}" own most-mentioned review keywords: ${v.reviewKeywords.map((k) => `${k.keyword} (${k.mentions})`).join(", ")}.`,
+        v.name
+      );
+    }
+    if (v.demographics) add(`Venue "${v.name}" audience: ${describeDemographicsFact(v.demographics)}.`, v.name);
   }
-  if (input.aggregate) add(`Averaged across the matched venues, audience ${describeDemographicsFact(input.aggregate)}.`);
+  if (input.aggregate) add(`Across all ${n} matched venues combined, average audience ${describeDemographicsFact(input.aggregate)}.`);
   if (input.regionInsights.length > 0) {
     add(
-      `Most-mentioned review keywords for these venues: ${input.regionInsights
+      `Across all ${n} matched venues combined, most-mentioned review keywords: ${input.regionInsights
         .slice(0, 10)
         .map((r) => `${r.keyword} (${r.mentions})`)
         .join(", ")}.`
@@ -437,11 +457,22 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     }
     return lookup;
   };
+  const tagSearches = new Map<string, Promise<QlooTag[]>>();
+  const searchTags: SearchTags = (query) => {
+    const key = query.trim().toLowerCase();
+    let search = tagSearches.get(key);
+    if (!search) {
+      search = findTags(query, 8);
+      tagSearches.set(key, search);
+      search.catch(() => tagSearches.delete(key));
+    }
+    return search;
+  };
 
   let tagDecision: AgentTagDecision | undefined;
   if (agentEnabled) {
     try {
-      tagDecision = await planTagsWithAgent(concept, city, findVenues);
+      tagDecision = await planTagsWithAgent(concept, city, findVenues, searchTags);
     } catch (error) {
       if (isRateLimitError(error)) throw error;
       agentNotes.push(`Agent tag selection fell back to deterministic ranking: ${shortError(error)}`);
@@ -450,17 +481,43 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
 
   let primaryTag: Tag;
   let places: QlooPlace[];
-  if (tagDecision) {
+  const agentPlaces = tagDecision ? await findVenues(tagDecision.primary.id) : [];
+  if (tagDecision && agentPlaces.length >= MIN_PILOT_VENUES) {
     primaryTag = { id: tagDecision.primary.id, name: tagDecision.primary.name, type: tagDecision.primary.type };
-    places = await findVenues(primaryTag.id);
+    places = agentPlaces;
   } else {
-    const resolved = await resolveTagDeterministically(concept, findVenues);
-    primaryTag = resolved.primaryTag;
-    places = resolved.places;
-    if (places.length === 0) {
-      limitations.push(
-        `Qloo found no venues in "${city}" for any of the tags related to "${concept}" (tried: ${resolved.triedTagNames.join(", ")}). The city may be misspelled, or the niche may be too narrow for this region.`
-      );
+    // The agent may only improve on the baseline, never fall below it: with fewer than
+    // MIN_PILOT_VENUES candidates its pick is checked against the deterministic one,
+    // and the tag with more venues wins. Seen live: the agent anchored "Neapolitan
+    // sourdough pizza" on a tag with one (Detroit-style) venue while the baseline
+    // tag had four Neapolitan pizzerias.
+    const resolved = await resolveTagDeterministically(concept, findVenues, searchTags);
+    if (tagDecision && agentPlaces.length > 0 && agentPlaces.length >= resolved.places.length) {
+      primaryTag = { id: tagDecision.primary.id, name: tagDecision.primary.name, type: tagDecision.primary.type };
+      places = agentPlaces;
+    } else {
+      if (tagDecision) {
+        tagDecision = {
+          ...tagDecision,
+          override: {
+            agentTag: tagDecision.primary.name,
+            agentVenueCount: agentPlaces.length,
+            usedTag: resolved.primaryTag.name,
+            usedVenueCount: resolved.places.length,
+          },
+          secondary: [
+            { ...tagDecision.primary, venueNames: agentPlaces.slice(0, 3).map((p) => p.name) },
+            ...tagDecision.secondary,
+          ].slice(0, 3),
+        };
+      }
+      primaryTag = resolved.primaryTag;
+      places = resolved.places;
+      if (places.length === 0) {
+        limitations.push(
+          `Qloo found no venues in "${city}" for any of the tags related to "${concept}" (tried: ${resolved.triedTagNames.join(", ")}). The city may be misspelled, or the niche may be too narrow for this region.`
+        );
+      }
     }
   }
 
@@ -490,6 +547,10 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
         hours: formatHours(p.properties?.hours),
         vibeTags: (p.tags ?? []).filter((t) => t.type !== DIETARY_TAG_TYPE).slice(0, 6).map((t) => t.name),
         dietaryOptions: extractDietaryOptions(p.tags ?? []),
+        reviewKeywords: [...(p.properties?.keywords ?? [])]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 6)
+          .map((k) => ({ keyword: k.name, mentions: k.count })),
         demographics: demo,
       };
     })
@@ -527,7 +588,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     `Tasting concept: "${concept}"`,
     `Atmosphere cues (from tags of taste-matched venues): ${vibeWords.length > 0 ? vibeWords.join(", ") : "not enough data"}.`,
     regionInsights.length > 0
-      ? `What this niche's venues actually get praised for in this region (by review-keyword mention frequency): ${regionInsights.slice(0, 6).map((r) => r.keyword).join(", ")}. This isn't complaint data — Qloo doesn't expose review text, only aggregated mention counts — but it's a signal for what the local audience already values.`
+      ? `What reviews of the ${venues.length} matched venue${venues.length === 1 ? "" : "s"} mention most: ${regionInsights.slice(0, 6).map((r) => r.keyword).join(", ")}. These are aggregated mention counts, not review text${venues.length < 3 ? ", and too few venues to speak for the whole city" : ""}.`
       : `Not enough review-keyword data for this niche in this region.`,
     `Format: a closed tasting for 15–25 guests, a curated 3–5 item menu, feedback collected via rating cards.`,
     `Goal: validate product-market fit before investing in a permanent menu or a new location.`,

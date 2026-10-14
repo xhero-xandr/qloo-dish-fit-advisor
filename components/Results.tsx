@@ -78,8 +78,10 @@ export function Results({ result }: { result: PilotPackage }) {
 
       {result.regionInsights.length > 0 && (
         <Section
-          title="What this region's audience actually values"
-          subtitle="Aggregated review-keyword mentions across matched venues — not complaints, just what gets talked about"
+          title="What reviews of these venues talk about"
+          subtitle={`Review-keyword mentions summed across ${result.venues.length} matched venue${
+            result.venues.length === 1 ? "" : "s"
+          }${result.venues.length < 3 ? " — too few to speak for the whole city" : ""}`}
         >
           <div className="flex flex-wrap gap-2">
             {result.regionInsights.map((r, i) => (

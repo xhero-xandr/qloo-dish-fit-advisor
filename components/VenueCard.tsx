@@ -39,6 +39,12 @@ export function VenueCard({ venue, rank }: { venue: VenueCandidate; rank: number
             ))}
           </div>
         )}
+        {venue.reviewKeywords.length > 0 && (
+          <p className="mt-2 text-xs text-zinc-500">
+            <span className="text-zinc-400">Reviews mention:</span>{" "}
+            {venue.reviewKeywords.map((k) => `${k.keyword} (${k.mentions})`).join(", ")}
+          </p>
+        )}
         {venue.vibeTags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {venue.vibeTags.map((t, j) => (

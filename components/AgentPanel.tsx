@@ -1,5 +1,11 @@
 import { Citations } from "./Citations";
-import type { AgentOutput, CitedItem, Fact } from "./types";
+import type { AgentOutput, CitedItem, Fact, Fit } from "./types";
+
+const FIT_STYLE: Record<Fit, string> = {
+  strong: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  moderate: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+  weak: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+};
 
 function CitedList({ title, items, facts }: { title: string; items: CitedItem[]; facts: Map<string, Fact> }) {
   if (items.length === 0) return null;
@@ -62,6 +68,14 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
             ))}
           </div>
           <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-400">{tagDecision.reasoning}</p>
+          {tagDecision.override && (
+            <p className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+              Overruled by code: the agent picked &quot;{tagDecision.override.agentTag}&quot;, which has only{" "}
+              {tagDecision.override.agentVenueCount} operating venue{tagDecision.override.agentVenueCount === 1 ? "" : "s"} here, so
+              the baseline tag &quot;{tagDecision.override.usedTag}&quot; ({tagDecision.override.usedVenueCount} venues) was used
+              instead. The agent&apos;s pick is kept as a secondary signal.
+            </p>
+          )}
           <details className="no-print mt-1.5 text-xs text-zinc-500">
             <summary className="cursor-pointer select-none">Agent steps ({tagDecision.toolCalls.length} Qloo tool calls)</summary>
             <ol className="mt-1.5 list-decimal space-y-0.5 pl-5">
@@ -77,7 +91,14 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
 
       {analysis?.verdict && (
         <div>
-          <p className="mb-1.5 text-xs font-medium text-zinc-500">Verdict</p>
+          <p className="mb-1.5 flex items-center gap-2 text-xs font-medium text-zinc-500">
+            Verdict
+            {analysis.verdict.fit && (
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${FIT_STYLE[analysis.verdict.fit]}`}>
+                {analysis.verdict.fit} fit
+              </span>
+            )}
+          </p>
           <p className="text-sm text-zinc-800 dark:text-zinc-200">
             {analysis.verdict.text}
             <Citations ids={analysis.verdict.facts} facts={facts} />
