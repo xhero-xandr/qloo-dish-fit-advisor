@@ -105,6 +105,16 @@ gets faster automatically — no code change needed.
   there is no LLM text-generation layer in this build. This keeps Qloo as the
   sole source of truth and keeps the project free to run without a second
   (paid) LLM API key.
+- Venue data is sourced from fixed-location business listings (address,
+  phone, hours, rating) — the same shape as Google Places/Yelp. Food trucks,
+  street carts, and pop-ups are structurally underrepresented or absent:
+  taxonomy tags like `food_truck` and `street_food` exist in Qloo's tag
+  vocabulary, but querying them returns stationary venues loosely associated
+  with the vibe (wineries, breweries, markets), not actual mobile vendors —
+  confirmed by direct testing, not assumed. This app is built for pilots at
+  an existing fixed venue; it is not a fit for validating a food-truck or
+  street-stall concept, where the decision depends on foot traffic and permit
+  location rather than venue listings.
 
 ## Running locally
 
