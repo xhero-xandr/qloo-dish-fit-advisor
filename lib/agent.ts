@@ -106,11 +106,7 @@ export function planTagsWithAgent(
   findVenues: FindVenues,
   searchTags: SearchTags
 ): Promise<AgentTagDecision> {
-  // Tag selection runs only on models that handle its tool loop; see ChainModel.toolAgent.
-  return withModelFallback(
-    llmModels().filter((m) => m.toolAgent),
-    (model) => runTagConversation(concept, city, findVenues, searchTags, model)
-  );
+  return withModelFallback(llmModels(), (model) => runTagConversation(concept, city, findVenues, searchTags, model));
 }
 
 async function runTagConversation(

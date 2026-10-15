@@ -116,15 +116,6 @@ is `generateText` with `Output.object` and a zod schema.
   minutes to 6 hours), so later analyses move on at once instead of each
   sitting through ~30s of retries. Enabling billing on the Google project
   lifts both limits; no code change needed.
-- **Groq backup (optional, `GROQ_API_KEY`):** once Gemini is parked, the
-  analysis step (verdict, venue, plan) runs on `openai/gpt-oss-120b` via
-  Groq instead of falling back to the template. Tag selection stays on
-  Gemini only: in testing gpt-oss failed that tool loop in every run
-  (calling tools it was told not to, skipping a required call, inventing
-  tag ids) while handling the analysis fine. Groq's free tier allows 8K
-  tokens/minute and 200K/day, so it is a backup for a few dozen analyses,
-  slower than Gemini, and words things differently; the panel names the
-  model that answered.
 - **Fewer requests per analysis:** the tag agent submits its choice through
   a `submit_choice` tool call in the same loop rather than a separate JSON
   turn, and batches independent tool calls per turn.
