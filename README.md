@@ -272,7 +272,7 @@ starting a second full pipeline, and the API rejects inputs over 200
 
 Every analysis spends shared Qloo and Gemini quota, so `/api/analyze` can sit
 behind a single demo account (`lib/auth.ts`). Set `DEMO_PASSWORD` (and
-optionally `DEMO_USER`, default `demo`) to turn it on; without it the app is
+optionally `DEMO_USER` or `DEMO_USERNAME`, default `demo`) to turn it on; without it the app is
 open, which is what local development uses. The login page shows the demo
 account with a "fill in" button (hide it with `SHOW_DEMO_CREDENTIALS=0`), and
 the same credentials go in the Devpost testing instructions.

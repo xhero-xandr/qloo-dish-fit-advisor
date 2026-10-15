@@ -157,7 +157,7 @@ export function Results({ result }: { result: PilotPackage }) {
       <Section id="venues" title={`Candidate pilot venues`} subtitle={`${result.venues.length} real, named venues in ${result.city}`}>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {result.venues.map((v, i) => (
-            <VenueCard key={i} venue={v} rank={i + 1} />
+            <VenueCard key={i} venue={v} rank={i + 1} recommended={v.name === result.agent?.analysis?.recommendedVenue?.name} />
           ))}
           {result.venues.length === 0 && (
             <p className="text-sm text-zinc-500">No matching venues found for this city/concept.</p>

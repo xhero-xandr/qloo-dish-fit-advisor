@@ -7,7 +7,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const SESSION_COOKIE = "dfa_session";
 export const SESSION_TTL_SECONDS = 12 * 60 * 60;
 
-const DEMO_USER = process.env.DEMO_USER ?? "demo";
+const DEMO_USER = process.env.DEMO_USER || process.env.DEMO_USERNAME || "demo";
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "";
 const SECRET = process.env.SESSION_SECRET || DEMO_PASSWORD;
 

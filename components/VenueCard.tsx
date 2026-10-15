@@ -1,9 +1,21 @@
 import { PRICE_LABEL } from "./constants";
 import type { VenueCandidate } from "./types";
 
-export function VenueCard({ venue, rank }: { venue: VenueCandidate; rank: number }) {
+/** "+15125319142" -> "(512) 531-9142"; anything else is shown as Qloo gave it. */
+function formatPhone(phone: string): string {
+  const m = phone.match(/^\+?1?(\d{3})(\d{3})(\d{4})$/);
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : phone;
+}
+
+export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate; rank: number; recommended?: boolean }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div
+      className={`overflow-hidden rounded-xl border bg-white shadow-sm dark:bg-zinc-950 ${
+        recommended
+          ? "border-emerald-400 ring-2 ring-emerald-200 dark:border-emerald-700 dark:ring-emerald-900"
+          : "border-zinc-200 dark:border-zinc-800"
+      }`}
+    >
       {venue.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={venue.imageUrl} alt={venue.name} className="h-36 w-full object-cover" loading="lazy" />
@@ -13,6 +25,11 @@ export function VenueCard({ venue, rank }: { venue: VenueCandidate; rank: number
         </div>
       )}
       <div className="p-4">
+        {recommended && (
+          <p className="mb-2 inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            Recommended for the pilot
+          </p>
+        )}
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-medium leading-tight">
             <span className="mr-1.5 text-xs text-zinc-400">#{rank}</span>
@@ -63,7 +80,7 @@ export function VenueCard({ venue, rank }: { venue: VenueCandidate; rank: number
               href={`tel:${venue.phone}`}
               className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900"
             >
-              ☎ {venue.phone}
+              ☎ {formatPhone(venue.phone)}
             </a>
           )}
           {venue.website && (
