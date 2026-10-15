@@ -124,6 +124,15 @@ is `generateText` with `Output.object` and a zod schema.
   must cite numbered facts and are dropped if they don't; the recommended
   venue must be one of the matched venues and must cite at least one fact
   about *that* venue (citing another venue's facts is stripped).
+- **Plan steps cite only when they state something about the data:** steps
+  like "send the outreach letter" or "review the night against the agreed
+  success bar" make no claim about Qloo's data and cite nothing; a step that
+  states a venue's hours, menu or audience must cite the fact (invented fact
+  ids are still stripped). Before this, those generic steps carried
+  decorative citations (e.g. "review feedback" citing the opening-hours
+  fact), which passed the check without supporting anything. The plan also
+  now names the dishes (from the menu notes) and ties week 1 to the outreach
+  letter and week 4 to the success bar on the page.
 - **The tasting night fits the venue's hours:** the day and time window the
   agent writes are checked in code against the venue's structured hours
   (`lib/hours.ts`). A window on a closed day, outside the hours, or before
@@ -260,6 +269,13 @@ starting a second full pipeline, and the API rejects inputs over 200
   audience right for this venue," not "how many people pass by it."
 
 ## Possible next steps
+
+- **Menu notes that adapt, not repeat.** Today they often restate what the
+  venue already sells. Telling the agent to adapt the concept to the venue
+  instead did that better in New York (it addressed the missing natural-wine
+  signal) but flipped the Chicago verdict to "strong" despite its own risk
+  saying the venue has no natural wine, so it was left out. Verdicts are
+  sensitive to prompt wording; any change needs the five-concept comparison.
 
 - **Tune the model.** The agent runs on defaults for everything except
   `seed` and `temperature`. If you run it for real, the next levers are
