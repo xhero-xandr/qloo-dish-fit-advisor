@@ -147,20 +147,28 @@ export default function Home() {
   const active = results.find((r) => r.city === activeCity);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white text-zinc-900 dark:from-black dark:to-zinc-950 dark:text-zinc-50">
+    <div className="min-h-screen text-zinc-900 dark:text-zinc-50">
       <main className="mx-auto max-w-4xl px-6 py-14 print:max-w-none print:p-0">
         <header className="mb-10 no-print">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Live Qloo taste graph — no mock data
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-800 dark:border-orange-900 dark:bg-orange-950/60 dark:text-orange-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+            Built on Qloo&apos;s live taste graph — no mock data
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Dish-Market Fit Advisor</h1>
-          <p className="mt-3 max-w-2xl text-zinc-600 dark:text-zinc-400">
-            For chefs, food technologists, and restaurant operators: before you invest in a new dish or
-            menu, test it here. Describe the concept you&apos;re considering and a city — get real
-            candidate pilot venues, their actual audience affinity, and a launch plan, grounded in
-            Qloo&apos;s taste graph instead of a guess.
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            Dish-Market{" "}
+            <span className="bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">Fit Advisor</span>
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
+            Test a new dish or menu before you invest in it. Describe the concept and a city — get real venues to pilot
+            it in, who their audience is, and a cited 4-week plan, all grounded in Qloo&apos;s taste graph.
           </p>
+          <ul className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+            {["Real, named venues", "Audience & cross-domain taste", "Plan from the venue's real hours", "Every claim cites its source"].map((t) => (
+              <li key={t} className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/50">
+                {t}
+              </li>
+            ))}
+          </ul>
 
           <MethodologyDetails />
         </header>
@@ -184,7 +192,7 @@ export default function Home() {
               type="button"
               onClick={() => applyPreset(p)}
               disabled={loading}
-              className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-600 transition hover:border-orange-400 hover:text-orange-700 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-orange-300"
             >
               {p.concept} · {p.city.split(",")[0]}
             </button>
@@ -197,7 +205,7 @@ export default function Home() {
               The dish/menu concept you want to validate — not what you feel like eating
             </label>
             <input
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:ring-orange-900"
               placeholder="e.g. izakaya-style small plates"
               value={concept}
               maxLength={200}
@@ -210,7 +218,7 @@ export default function Home() {
             <label className="mb-1 block text-xs font-medium text-zinc-500">
               City or cities to pilot in — add one or more to compare them side by side
             </label>
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-sm focus-within:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-sm focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-200 dark:border-zinc-700 dark:bg-zinc-900 dark:focus-within:ring-orange-900">
               {cities.map((c) => (
                 <span
                   key={c}
@@ -245,7 +253,7 @@ export default function Home() {
                   onClick={() => toggleQuickCity(c)}
                   className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
                     cities.includes(c)
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
+                      ? "border-orange-600 bg-orange-600 text-white"
                       : "border-zinc-200 text-zinc-500 hover:border-zinc-400 dark:border-zinc-800 dark:text-zinc-400"
                   }`}
                 >
@@ -258,7 +266,7 @@ export default function Home() {
           <button
             type="submit"
             disabled={loading}
-            className="self-start rounded-xl bg-zinc-900 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="self-start rounded-xl bg-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
           >
             {loading
               ? "Analyzing…"
@@ -282,7 +290,7 @@ export default function Home() {
                     onClick={() => setActiveCity(r.city)}
                     className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                       activeCity === r.city
-                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                        ? "bg-orange-600 text-white"
                         : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
                     }`}
                   >
@@ -307,9 +315,12 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="no-print self-start rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                  className="no-print inline-flex items-center gap-2 self-start rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
                 >
-                  🖨 Print / Save as PDF
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4" aria-hidden="true">
+                    <path d="M6 7V3h8v4M6 14H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-2M6 12h8v5H6z" strokeLinejoin="round" />
+                  </svg>
+                  Print / Save as PDF
                 </button>
                 <div className="hidden print:block">
                   <h1 className="text-xl font-semibold">Pilot package: &quot;{active.data.concept}&quot;</h1>

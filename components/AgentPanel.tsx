@@ -30,9 +30,9 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
   const models = Array.from(new Set([tagDecision?.model, analysis?.model].filter(Boolean)));
 
   return (
-    <section className="flex flex-col gap-5 rounded-xl border border-sky-200 bg-white p-5 dark:border-sky-900 dark:bg-zinc-950">
+    <section className="flex flex-col gap-5 rounded-xl border border-orange-200 bg-white p-5 shadow-sm shadow-orange-900/5 dark:border-orange-900/60 dark:bg-zinc-950">
       <div>
-        <h2 className="text-lg font-semibold">Agent analysis</h2>
+        <h2 className="text-lg font-semibold">Verdict &amp; recommendation</h2>
         <p className="mt-0.5 text-xs text-zinc-500">
           Written by an AI agent ({models.length > 0 ? models.join(", ") : "Gemini"}) working only from Qloo data. Every
           claim cites numbered Qloo facts; tap one to read it. A citation shows where a claim comes from, not that the
