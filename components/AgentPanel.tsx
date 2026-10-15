@@ -34,15 +34,14 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
       <div>
         <h2 className="text-lg font-semibold">Agent analysis</h2>
         <p className="mt-0.5 text-xs text-zinc-500">
-          {models.length > 0 ? `The agent (${models.join(", ")}) is ` : "The agent is "}
-          working only from Qloo data: it chose the taste tags by calling Qloo itself, and every claim below cites
-          the numbered Qloo facts it relied on. Code discards claims whose citations don&apos;t exist
-          {analysis && analysis.droppedItems > 0 ? ` (${analysis.droppedItems} discarded here)` : ""}
+          Written by an AI agent ({models.length > 0 ? models.join(", ") : "Gemini"}) working only from Qloo data. Every
+          claim cites numbered Qloo facts; tap one to read it. A citation shows where a claim comes from, not that the
+          reasoning is right
+          {analysis && analysis.droppedItems > 0 ? ` — ${analysis.droppedItems} claim(s) without a valid citation were discarded` : ""}
           {analysis && analysis.correctedItems > 0
-            ? `, and it moved ${analysis.correctedItems} tasting time${analysis.correctedItems === 1 ? "" : "s"} into the venue's real opening hours`
-            : ""}{" "}
-          — it can&apos;t check
-          that the reasoning is right, so tap a citation to see the fact yourself.
+            ? `${analysis.droppedItems > 0 ? "; " : " — "}${analysis.correctedItems} tasting time${analysis.correctedItems === 1 ? " was" : "s were"} moved into the venue's real opening hours`
+            : ""}
+          .
         </p>
       </div>
 

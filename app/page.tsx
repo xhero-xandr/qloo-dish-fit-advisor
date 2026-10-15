@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ComparisonSummary } from "@/components/ComparisonSummary";
 import { PRESETS, QUICK_CITIES } from "@/components/constants";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -15,6 +15,7 @@ export default function Home() {
   const [cityDraft, setCityDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CityResult[]>([]);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const [activeCity, setActiveCity] = useState<string | null>(null);
   // "ok" also covers a server with no login configured.
   const [auth, setAuth] = useState<"checking" | "required" | "ok">("checking");
@@ -123,6 +124,8 @@ export default function Home() {
     await Promise.all(Array.from({ length: Math.min(CITY_CONCURRENCY, cities.length) }, worker));
     setActiveCity((current) => current ?? cities[0] ?? null);
     setLoading(false);
+    // On a phone the results start well below the form; bring them into view.
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -173,6 +176,21 @@ export default function Home() {
                 </button>
               </div>
             )}
+        <div className="mb-5 flex flex-wrap items-center gap-2 no-print">
+          <span className="text-xs font-medium text-zinc-500">Start with an example:</span>
+          {PRESETS.map((p, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => applyPreset(p)}
+              disabled={loading}
+              className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              {p.concept} · {p.city.split(",")[0]}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 no-print">
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">
@@ -250,25 +268,10 @@ export default function Home() {
           </button>
         </form>
 
-        <div className="mt-4 flex flex-wrap gap-2 no-print">
-          <span className="self-center text-xs text-zinc-400">Try:</span>
-          {PRESETS.map((p, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => applyPreset(p)}
-              disabled={loading}
-              className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              {p.concept} · {p.city.split(",")[0]}
-            </button>
-          ))}
-        </div>
-
-        {loading && <LoadingSkeleton />}
+        {loading && <LoadingSkeleton cities={cities.length || 1} />}
 
         {results.length > 0 && !loading && (
-          <div className="print-surface mt-10 flex flex-col gap-8">
+          <div ref={resultsRef} className="print-surface mt-10 flex scroll-mt-4 flex-col gap-8">
             {results.length > 1 && <ComparisonSummary results={results} />}
 
             {results.length > 1 && (

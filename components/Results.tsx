@@ -45,20 +45,21 @@ export function Results({ result }: { result: PilotPackage }) {
   const facts = new Map((result.agent?.facts ?? []).map((f) => [f.id, f]));
   return (
     <div className="mt-10 flex flex-col gap-10">
-      {result.resolvedLocation && (
-        <p className="text-xs text-zinc-400">
-          Showing results for <span className="font-medium text-zinc-600 dark:text-zinc-300">{result.resolvedLocation}</span> — the
-          location Qloo actually geocoded &quot;{result.city}&quot; to. If that&apos;s not the city you meant, add a state/country
-          to disambiguate (e.g. &quot;Paris, TX&quot; vs &quot;Paris, France&quot;).
-        </p>
-      )}
-      {result.cachedAt && (
-        <p className="text-xs text-zinc-400">
-          Served from cache — this exact concept and city was already analyzed{" "}
-          {new Date(result.cachedAt).toLocaleString()}. Any concept + city pair, preset or your own, is kept for up to 12
-          hours so repeats (presets, reloads, re-running a comparison) don&apos;t spend the shared Qloo and Gemini quotas
-          again. Nothing in it is changed or regenerated; a new concept or city always runs a fresh analysis.
-        </p>
+      {(result.resolvedLocation || result.cachedAt) && (
+        <div className="-mb-4 flex flex-col gap-1 text-xs text-zinc-400">
+          {result.resolvedLocation && (
+            <p>
+              Results for <span className="font-medium text-zinc-600 dark:text-zinc-300">{result.resolvedLocation}</span> (where Qloo
+              placed &quot;{result.city}&quot;). Not the city you meant? Add a state or country, e.g. &quot;Paris, TX&quot;.
+            </p>
+          )}
+          {result.cachedAt && (
+            <p>
+              From cache: analyzed {new Date(result.cachedAt).toLocaleString()}. Repeats are reused for up to 12 hours to
+              protect the shared API quotas; a new concept or city always runs fresh.
+            </p>
+          )}
+        </div>
       )}
       {result.limitations.length > 0 && (
         <section className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
@@ -71,73 +72,38 @@ export function Results({ result }: { result: PilotPackage }) {
         </section>
       )}
 
-      {result.matchedTag && (
-        <section>
-          <p className="text-sm text-zinc-500">
-            Matched Qloo tag:{" "}
-            <span className="rounded-full border border-zinc-300 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
-              {result.matchedTag.name}
-            </span>{" "}
-            <span className="text-xs text-zinc-400">({result.matchedTag.type.replace("urn:tag:", "")})</span>
-          </p>
-        </section>
-      )}
-
-      {result.agent && <AgentPanel agent={result.agent} />}
-
-      {result.aggregateDemographics && (
-        <Section title="Audience affinity profile" subtitle={`Averaged across ${result.venues.length} matched venues`}>
-          <DemographicsChart demo={result.aggregateDemographics} />
-        </Section>
-      )}
-
-      <Section title={`Candidate pilot venues`} subtitle={`${result.venues.length} real, named venues in ${result.city}`}>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {result.venues.map((v, i) => (
-            <VenueCard key={i} venue={v} rank={i + 1} />
+      <nav
+        aria-label="Sections"
+        className="no-print sticky top-0 z-10 -mx-2 flex gap-1.5 overflow-x-auto border-b border-zinc-200 bg-white/90 px-2 py-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90"
+      >
+        {[
+          result.agent ? ["verdict", "Verdict"] : undefined,
+          ["plan", "Pilot plan"],
+          ["venues", "Venues"],
+          result.aggregateDemographics ? ["audience", "Audience"] : undefined,
+          result.culturalAffinity ? ["culture", "Beyond food"] : undefined,
+          ["letter", "Letter"],
+        ]
+          .filter((x): x is string[] => Boolean(x))
+          .map(([id, label]) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="shrink-0 rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              {label}
+            </a>
           ))}
-          {result.venues.length === 0 && (
-            <p className="text-sm text-zinc-500">No matching venues found for this city/concept.</p>
-          )}
+      </nav>
+
+      {result.agent && (
+        <div id="verdict" className="scroll-mt-16">
+          <AgentPanel agent={result.agent} />
         </div>
-      </Section>
-
-      {result.regionInsights.length > 0 && (
-        <Section
-          title="What reviews of these venues talk about"
-          subtitle={`Review-keyword mentions summed across ${result.venues.length} matched venue${
-            result.venues.length === 1 ? "" : "s"
-          }${result.venues.length < 3 ? " — too few to speak for the whole city" : ""}`}
-        >
-          <div className="flex flex-wrap gap-2">
-            {result.regionInsights.map((r, i) => (
-              <span
-                key={i}
-                className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
-                title={`${r.mentions} mentions`}
-              >
-                {r.keyword} <span className="text-zinc-400">× {r.mentions}</span>
-              </span>
-            ))}
-          </div>
-        </Section>
       )}
-
-      {result.culturalAffinity && (
-        <Section
-          title="Cultural affinity (beyond food)"
-          subtitle="Cross-domain Qloo graph signal seeded with the matched venues — their audience, other categories"
-        >
-          <CulturalAffinityPanel data={result.culturalAffinity} />
-        </Section>
-      )}
-
-      <Section title="Tasting concept brief">
-        <TextBlock text={result.tastingBrief} />
-      </Section>
 
       {agentPlan.length > 0 ? (
-        <Section title="Pilot plan" subtitle="Written by the agent from the cited Qloo facts">
+        <Section id="plan" title="Pilot plan" subtitle="Written by the agent from the cited Qloo facts">
           <ol className="flex flex-col gap-2.5">
             {agentPlan.map((step, i) => (
               <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
@@ -151,7 +117,7 @@ export function Results({ result }: { result: PilotPackage }) {
           </ol>
         </Section>
       ) : (
-        <Section title="4-week pilot plan" subtitle="Generic template — the same steps for every concept">
+        <Section id="plan" title="4-week pilot plan" subtitle="Generic template — the same steps for every concept">
           <ol className="flex flex-col gap-2">
             {result.pilotPlan.map((step, i) => (
               <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
@@ -176,8 +142,72 @@ export function Results({ result }: { result: PilotPackage }) {
         </ul>
       </Section>
 
+      {result.matchedTag && (
+        <section>
+          <p className="text-sm text-zinc-500">
+            Matched Qloo tag:{" "}
+            <span className="rounded-full border border-zinc-300 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
+              {result.matchedTag.name}
+            </span>{" "}
+            <span className="text-xs text-zinc-400">({result.matchedTag.type.replace("urn:tag:", "")})</span>
+          </p>
+        </section>
+      )}
+
+      <Section id="venues" title={`Candidate pilot venues`} subtitle={`${result.venues.length} real, named venues in ${result.city}`}>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {result.venues.map((v, i) => (
+            <VenueCard key={i} venue={v} rank={i + 1} />
+          ))}
+          {result.venues.length === 0 && (
+            <p className="text-sm text-zinc-500">No matching venues found for this city/concept.</p>
+          )}
+        </div>
+      </Section>
+
+      {result.aggregateDemographics && (
+        <Section id="audience" title="Audience affinity profile" subtitle={`Averaged across ${result.venues.length} matched venues`}>
+          <DemographicsChart demo={result.aggregateDemographics} />
+        </Section>
+      )}
+
+      {result.regionInsights.length > 0 && (
+        <Section
+          title="What reviews of these venues talk about"
+          subtitle={`Review-keyword mentions summed across ${result.venues.length} matched venue${
+            result.venues.length === 1 ? "" : "s"
+          }${result.venues.length < 3 ? " — too few to speak for the whole city" : ""}`}
+        >
+          <div className="flex flex-wrap gap-2">
+            {result.regionInsights.map((r, i) => (
+              <span
+                key={i}
+                className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
+                title={`${r.mentions} mentions`}
+              >
+                {r.keyword} <span className="text-zinc-400">× {r.mentions}</span>
+              </span>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {result.culturalAffinity && (
+        <Section
+          id="culture"
+          title="Cultural affinity (beyond food)"
+          subtitle="Cross-domain Qloo graph signal seeded with the matched venues — their audience, other categories"
+        >
+          <CulturalAffinityPanel data={result.culturalAffinity} />
+        </Section>
+      )}
+
+      <Section title="Tasting concept brief">
+        <TextBlock text={result.tastingBrief} />
+      </Section>
+
       <div className="no-print">
-        <Section title="Venue owner outreach letter">
+        <Section id="letter" title="Venue owner outreach letter">
           <TextBlock text={result.ownerLetter} highlighted copyable />
         </Section>
       </div>
