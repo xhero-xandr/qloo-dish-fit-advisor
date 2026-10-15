@@ -268,6 +268,25 @@ starting a second full pipeline, and the API rejects inputs over 200
   output with a dedicated foot-traffic provider; this app answers "is the
   audience right for this venue," not "how many people pass by it."
 
+## Demo login and abuse limits
+
+Every analysis spends shared Qloo and Gemini quota, so `/api/analyze` can sit
+behind a single demo account (`lib/auth.ts`). Set `DEMO_PASSWORD` (and
+optionally `DEMO_USER`, default `demo`) to turn it on; without it the app is
+open, which is what local development uses. The login page shows the demo
+account with a "fill in" button (hide it with `SHOW_DEMO_CREDENTIALS=0`), and
+the same credentials go in the Devpost testing instructions.
+
+- **Session:** a signed, HttpOnly cookie valid for 12 hours, no database.
+  Forged and expired tokens are rejected.
+- **Limits per client address** (from `cf-connecting-ip` / `x-forwarded-for`,
+  in memory, reset by a restart): 30 analyses per hour (a city comparison
+  sends one per city) and 10 sign-in attempts per 10 minutes.
+- **What this is and isn't:** because the demo credentials are public by
+  design, the login keeps casual and automated traffic off the quota; it is
+  not access control. The per-address limits are what bound abuse, and
+  Cloudflare in front of the site handles bots.
+
 ## Possible next steps
 
 - **Menu notes that adapt, not repeat.** Today they often restate what the

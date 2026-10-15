@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ComparisonSummary } from "@/components/ComparisonSummary";
 import { PRESETS, QUICK_CITIES } from "@/components/constants";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { LoginPanel } from "@/components/LoginPanel";
 import { MethodologyDetails } from "@/components/MethodologyDetails";
 import { Results } from "@/components/Results";
 import type { CityResult } from "@/components/types";
@@ -15,6 +16,43 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CityResult[]>([]);
   const [activeCity, setActiveCity] = useState<string | null>(null);
+  // "ok" also covers a server with no login configured.
+  const [auth, setAuth] = useState<"checking" | "required" | "ok">("checking");
+  const [authRequired, setAuthRequired] = useState(false);
+  const [demo, setDemo] = useState<{ username: string; password: string }>();
+
+  function applySession(data: { authRequired?: boolean; authenticated?: boolean; demo?: { username: string; password: string } }) {
+    setAuthRequired(Boolean(data.authRequired));
+    setDemo(data.demo);
+    setAuth(data.authenticated ? "ok" : "required");
+  }
+
+  async function checkSession() {
+    try {
+      const res = await fetch("/api/session", { cache: "no-store" });
+      applySession(await res.json());
+    } catch {
+      setAuth("ok"); // if the check itself fails, let the analysis request report the problem
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/session", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => !cancelled && applySession(data))
+      .catch(() => !cancelled && setAuth("ok"));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function signOut() {
+    await fetch("/api/logout", { method: "POST" });
+    setResults([]);
+    setActiveCity(null);
+    checkSession();
+  }
 
   function addCity(raw: string) {
     const value = raw.trim();
@@ -55,6 +93,7 @@ export default function Home() {
         body: JSON.stringify({ concept: c, city: cty }),
       });
       const data = await res.json();
+      if (res.status === 401) checkSession();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
       return { city: cty, data };
     } catch (err) {
@@ -123,6 +162,17 @@ export default function Home() {
           <MethodologyDetails />
         </header>
 
+        {auth === "required" && <LoginPanel demo={demo} onSignedIn={checkSession} />}
+
+        {auth === "ok" && (
+          <>
+            {authRequired && (
+              <div className="no-print mb-4 flex justify-end">
+                <button type="button" onClick={signOut} className="text-xs text-zinc-400 underline underline-offset-2 hover:text-zinc-700">
+                  Sign out
+                </button>
+              </div>
+            )}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 no-print">
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">
@@ -267,6 +317,8 @@ export default function Home() {
               </>
             )}
           </div>
+        )}
+          </>
         )}
       </main>
     </div>
