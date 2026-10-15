@@ -7,6 +7,31 @@ import { TextBlock } from "./TextBlock";
 import type { PilotPackage } from "./types";
 import { VenueCard } from "./VenueCard";
 
+// Not generated and not from Qloo: the standard way to decide whether a one-night pilot worked.
+// Agreeing the numbers beforehand is the point; the thresholds are examples to adjust.
+const JUDGING_STEPS = [
+  {
+    title: "Agree the bar before the night",
+    text: 'write down, with the venue, what counts as success (for example "at least 60% of guests would order it again and one dish clearly stands out") so the result can\'t be argued afterwards.',
+  },
+  {
+    title: "Count what happened",
+    text: "guests booked vs. guests who came, how many portions of each dish were eaten, and what was left on the plates.",
+  },
+  {
+    title: "Ask one question on the way out",
+    text: '"Would you order this again at this venue?" — a yes/no on paper beats a general impression.',
+  },
+  {
+    title: "Decide the next step in advance",
+    text: "most guests say yes and the owner is interested: negotiate a limited-time menu; only one or two dishes land: rework the menu and run a second night; lukewarm across the board: stop, or try another venue from the shortlist.",
+  },
+  {
+    title: "Settle the practicalities first",
+    text: "who holds the licence to serve alcohol and which food-safety rules apply to a guest chef in that venue's kitchen — Qloo has no data on either.",
+  },
+];
+
 function StepNumber({ n }: { n: number }) {
   return (
     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-semibold text-white dark:bg-white dark:text-zinc-900">
@@ -137,6 +162,19 @@ export function Results({ result }: { result: PilotPackage }) {
           </ol>
         </Section>
       )}
+
+      <Section title="How to judge the pilot" subtitle="General practice for a one-night pilot — not derived from Qloo data">
+        <ul className="flex flex-col gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">
+          {JUDGING_STEPS.map((step) => (
+            <li key={step.title} className="flex gap-3">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
+              <span>
+                <strong className="font-medium text-zinc-900 dark:text-zinc-100">{step.title}:</strong> {step.text}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
       <div className="no-print">
         <Section title="Venue owner outreach letter">

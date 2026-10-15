@@ -37,7 +37,11 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
           {models.length > 0 ? `The agent (${models.join(", ")}) is ` : "The agent is "}
           working only from Qloo data: it chose the taste tags by calling Qloo itself, and every claim below cites
           the numbered Qloo facts it relied on. Code discards claims whose citations don&apos;t exist
-          {analysis && analysis.droppedItems > 0 ? ` (${analysis.droppedItems} discarded here)` : ""} — it can&apos;t check
+          {analysis && analysis.droppedItems > 0 ? ` (${analysis.droppedItems} discarded here)` : ""}
+          {analysis && analysis.correctedItems > 0
+            ? `, and it moved ${analysis.correctedItems} tasting time${analysis.correctedItems === 1 ? "" : "s"} into the venue's real opening hours`
+            : ""}{" "}
+          — it can&apos;t check
           that the reasoning is right, so tap a citation to see the fact yourself.
         </p>
       </div>

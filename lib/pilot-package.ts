@@ -9,6 +9,7 @@ import {
   type DemographicsResult,
   type CrossDomainEntity,
 } from "./qloo";
+import { weekWindows, type WeekWindows } from "./hours";
 import { isLlmConfigured } from "./llm";
 import {
   planTagsWithAgent,
@@ -572,6 +573,11 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
 
   let agent: AgentOutput | undefined;
   if (agentEnabled) {
+    const windows = new Map<string, WeekWindows>();
+    for (const p of topPlaces) {
+      const week = weekWindows(p.properties?.hours);
+      if (week) windows.set(p.name, week);
+    }
     const facts = buildFacts({
       city,
       primaryTag,
@@ -584,7 +590,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     let analysis: AgentAnalysis | undefined;
     if (venues.length > 0) {
       try {
-        analysis = await synthesizeWithAgent(concept, city, facts, venues.map((v) => v.name));
+        analysis = await synthesizeWithAgent(concept, city, facts, venues.map((v) => v.name), windows);
       } catch (error) {
         agentNotes.push(`Agent analysis unavailable, showing the template plan: ${shortError(error)}`);
       }

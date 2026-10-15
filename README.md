@@ -124,6 +124,15 @@ is `generateText` with `Output.object` and a zod schema.
   must cite numbered facts and are dropped if they don't; the recommended
   venue must be one of the matched venues and must cite at least one fact
   about *that* venue (citing another venue's facts is stripped).
+- **The tasting night fits the venue's hours:** the day and time window the
+  agent writes are checked in code against the venue's structured hours
+  (`lib/hours.ts`). A window on a closed day, outside the hours, or before
+  17:00 when the venue opens in the evening is replaced by one computed from
+  those hours (a quiet weekday evening, up to 3 hours), and the panel says
+  how many were moved. This is done in code rather than by adding the
+  computed slot to the agent's facts: adding one fact per venue shifted the
+  agent's verdicts (a vegan concept in a meat-heavy venue went from moderate
+  to strong), so the prompt is left alone.
 - **The agent can't do worse than the baseline:** if its primary tag has
   fewer than 3 operating venues, code runs the deterministic tag ranking
   and keeps whichever tag has more venues — visibly, as "Overruled by

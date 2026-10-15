@@ -4,6 +4,7 @@
 
 import { generateText, hasToolCall, isStepCount, Output, tool } from "ai";
 import { z } from "zod";
+import { formatSlot, parseSlot, slotProblem, suggestTastingSlot, type WeekWindows } from "./hours";
 import { isModelParked, LLM_MAX_RETRIES, llmModels, parkIfQuotaSpent, type ChainModel } from "./llm";
 import { QlooQuotaError, type QlooPlace, type QlooTag } from "./qloo";
 
@@ -56,6 +57,8 @@ export interface AgentAnalysis {
   menuNotes: CitedItem[];
   risks: CitedItem[];
   droppedItems: number;
+  /** Tasting-night windows the code replaced because they fell outside the venue's hours or before the evening. */
+  correctedItems: number;
 }
 
 type FindVenues = (tagId: string) => Promise<QlooPlace[]>;
@@ -278,7 +281,8 @@ export async function synthesizeWithAgent(
   concept: string,
   city: string,
   facts: Fact[],
-  venueNames: string[]
+  venueNames: string[],
+  windows: Map<string, WeekWindows> = new Map()
 ): Promise<AgentAnalysis> {
   const factIds = new Set(facts.map((f) => f.id));
   const factList = facts.map((f) => `${f.id}: ${f.text}`).join("\n");
@@ -328,13 +332,29 @@ export async function synthesizeWithAgent(
 
   const verdict = keep(value.verdict);
 
+  // The tasting night must fit the venue's real hours. The agent's wording is checked, and a
+  // window that is on a closed day, outside the hours, or before the evening (when the venue
+  // opens in the evening) is replaced by the one computed from those hours.
+  let corrected = 0;
+  const week = recommendedVenue && windows.get(recommendedVenue.name);
+  const pilotPlan = keepAll(value.pilotPlan).map((step) => {
+    const slot = parseSlot(step.when);
+    if (!slot || !week || !slotProblem(slot, week)) return step;
+    const suggested = suggestTastingSlot(week);
+    if (!suggested) return step;
+    corrected++;
+    const prefix = step.when.match(/^(.*?)\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i)?.[1] ?? "";
+    return { ...step, when: `${prefix}${formatSlot(suggested)}` };
+  });
+
   return {
     model,
     verdict: verdict && { text: verdict.text, facts: verdict.facts, fit: verdict.fit },
     recommendedVenue,
-    pilotPlan: keepAll(value.pilotPlan),
+    pilotPlan,
     menuNotes: keepAll(value.menuNotes),
     risks: keepAll(value.risks),
     droppedItems: dropped,
+    correctedItems: corrected,
   };
 }
