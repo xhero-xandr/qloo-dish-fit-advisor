@@ -99,9 +99,15 @@ is `generateText` with `Output.object` and a zod schema.
   tool turns in under a second, while 3.8-flash and 3.6-flash mostly
   returned 503, hung past 90s, or took ~55s per turn — and on the free tier
   3.8-flash allows only 20 requests/day.
-- **Reproducible output:** both steps run at `temperature: 0` with a fixed
-  `seed`. Over 5 concepts × 2 runs, the second run returned the same tag,
-  fit, venue, plan, menu notes and risks, word for word, as the first.
+- **Reproducible output:** both steps send a fixed `seed` (and
+  `temperature: 0`). Measured on `gemini-3.5-flash-lite`: with the seed, 5
+  identical requests returned 5 identical answers; without it, 5 different
+  ones — and `temperature` made no visible difference either way (0 and 1
+  behaved the same), so the seed is what does the work. Over 5 concepts × 2
+  runs, the second run returned the same tag, fit, venue, plan, menu notes
+  and risks, word for word, as the first. Repeatability is a convenience
+  for comparing changes, not something the product's trustworthiness rests
+  on; that comes from the code-side checks below.
 - **Free-tier quota:** 15 requests/minute and ~500/day per model (from
   Google's own 429 `QuotaFailure` details). One analysis averages ~4.4
   Gemini requests, so ~110 analyses/day. A per-minute 429 is retried by
@@ -252,6 +258,21 @@ starting a second full pipeline, and the API rejects inputs over 200
   different data category entirely. For actual footfall, pair this tool's
   output with a dedicated foot-traffic provider; this app answers "is the
   audience right for this venue," not "how many people pass by it."
+
+## Possible next steps
+
+- **Tune the model.** The agent runs on defaults for everything except
+  `seed` and `temperature`. If you run it for real, the next levers are
+  output length, reasoning effort, or another model entirely; compare
+  candidates on a fixed set of concepts and keep the one with the best
+  answers. Don't trust a parameter because the API accepted it: check the
+  effect on output (the seed test above is an example).
+- **Tighten the fact checks.** Today the code verifies that citations exist,
+  that the venue is a matched one and cites its own facts. It does not yet
+  check that numbers or venue names in a sentence appear in the facts it
+  cites.
+- **Expose it as an MCP server**, so other agents can call the same
+  analysis directly.
 
 ## Running locally
 
