@@ -134,6 +134,21 @@ is `generateText` with `Output.object` and a zod schema.
   all 51 hits it raised were suggestions in menu notes and plan steps, which
   is why those are exempt. The rule is exercised by the unit tests
   (`npm test`).
+- **Recipes and ingredient lists map to a style, not to each ingredient:** a
+  chef will paste a recipe more often than a cuisine name. The tag agent is
+  told to infer the cuisine, style or venue format and anchor on that.
+  Measured before and after on 8 inputs: the four presets came back with
+  the same tag, fit and venue; "fried chicken sandwich with pickled slaw and
+  hot honey" in Nashville moved from Chick-fil-A (moderate) to Nashville Hot
+  Chicken / Hattie B's (strong), and "slow-cooked lamb shoulder with
+  pomegranate molasses" in Austin from 1 venue (weak) to 4 Middle Eastern
+  restaurants (moderate).
+- **A city query that lands on the wrong place is retried:** Qloo resolves
+  "Boise, ID", "Boise, Idaho" and "Boise, Idaho, United States" to Boise
+  County (Crouch, Horseshoe Bend) but plain "Boise" to the city. The query
+  that lands on the typed city and region is used; the bare city is accepted
+  only if the region still matches, so "Portland, ME" never silently becomes
+  Portland, OR (`lib/location.ts`).
 - **Input that does not describe food is flagged, not analysed as if it did:**
   Qloo's semantic tag search always returns *something*, so "asdfgh qwerty"
   comes back as the tag "Tacos". Found by running varied, non-preset
