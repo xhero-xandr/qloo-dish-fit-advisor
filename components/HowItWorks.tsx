@@ -22,13 +22,13 @@ export function HowItWorks() {
         {STEPS.map((s, i) => (
           <li
             key={s.title}
-            className="rounded-2xl border border-slate-200 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/40"
+            className="rounded-2xl border border-zinc-200 bg-white/70 p-5 dark:border-zinc-800 dark:bg-zinc-900/40"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-100 text-sm font-semibold text-accent-800 dark:bg-accent-950 dark:text-accent-300">
               {i + 1}
             </span>
             <h3 className="mt-3 text-base font-semibold">{s.title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{s.text}</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{s.text}</p>
           </li>
         ))}
       </ol>

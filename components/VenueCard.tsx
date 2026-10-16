@@ -10,17 +10,17 @@ function formatPhone(phone: string): string {
 export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate; rank: number; recommended?: boolean }) {
   return (
     <div
-      className={`lift overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-slate-950 ${
+      className={`lift overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-zinc-950 ${
         recommended
           ? "border-emerald-400 ring-2 ring-emerald-200 dark:border-emerald-700 dark:ring-emerald-900"
-          : "border-slate-200 dark:border-slate-800"
+          : "border-zinc-200 dark:border-zinc-800"
       }`}
     >
       {venue.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={venue.imageUrl} alt={venue.name} className="h-36 w-full object-cover" loading="lazy" />
       ) : (
-        <div className="flex h-36 w-full items-center justify-center bg-slate-100 text-slate-300 dark:bg-slate-900">
+        <div className="flex h-36 w-full items-center justify-center bg-zinc-100 text-zinc-300 dark:bg-zinc-900">
           No image
         </div>
       )}
@@ -32,17 +32,17 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
         )}
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-medium leading-tight">
-            <span className="mr-1.5 text-xs text-slate-400">#{rank}</span>
+            <span className="mr-1.5 text-xs text-zinc-400">#{rank}</span>
             {venue.name}
           </h3>
-          <div className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500">
+          <div className="flex shrink-0 items-center gap-1.5 text-xs text-zinc-500">
             {venue.rating && <span>★ {venue.rating.toFixed(1)}</span>}
             {venue.priceLevel ? <span>{PRICE_LABEL[venue.priceLevel]}</span> : null}
           </div>
         </div>
-        {venue.address && <p className="mt-1 text-xs text-slate-500">{venue.address}</p>}
-        {venue.hours && <p className="mt-0.5 text-xs text-slate-400">🕑 {venue.hours}</p>}
-        {venue.description && <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{venue.description}</p>}
+        {venue.address && <p className="mt-1 text-xs text-zinc-500">{venue.address}</p>}
+        {venue.hours && <p className="mt-0.5 text-xs text-zinc-400">🕑 {venue.hours}</p>}
+        {venue.description && <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{venue.description}</p>}
         {venue.dietaryOptions.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {venue.dietaryOptions.map((d, j) => (
@@ -57,8 +57,8 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
           </div>
         )}
         {venue.reviewKeywords.length > 0 && (
-          <p className="mt-2 text-xs text-slate-500">
-            <span className="text-slate-400">Reviews mention:</span>{" "}
+          <p className="mt-2 text-xs text-zinc-500">
+            <span className="text-zinc-400">Reviews mention:</span>{" "}
             {venue.reviewKeywords.map((k) => `${k.keyword} (${k.mentions})`).join(", ")}
           </p>
         )}
@@ -67,7 +67,7 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
             {venue.vibeTags.map((t, j) => (
               <span
                 key={j}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
               >
                 {t}
               </span>
@@ -88,7 +88,7 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
               href={venue.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-slate-500 underline underline-offset-2 hover:text-slate-900 dark:hover:text-slate-100"
+              className="text-xs font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
             >
               Website ↗
             </a>

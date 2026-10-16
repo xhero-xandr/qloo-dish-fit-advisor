@@ -59,7 +59,7 @@ export function AnalyzerForm({ concept, setConcept, cities, setCities, loading, 
   return (
     <div className="no-print">
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-slate-500">Start with an example:</span>
+        <span className="text-xs font-medium text-zinc-500">Start with an example:</span>
         {PRESETS.map((p) => (
           <Chip key={p.concept} onClick={() => applyPreset(p)} disabled={loading} className="px-3 py-1">
             {p.concept} · {p.city.split(",")[0]}
@@ -72,7 +72,7 @@ export function AnalyzerForm({ concept, setConcept, cities, setCities, loading, 
           <label htmlFor="concept" className="block text-sm font-medium">
             Dish or menu concept
           </label>
-          <p className="mb-1.5 text-xs text-slate-500">The idea you want to validate — not what you feel like eating.</p>
+          <p className="mb-1.5 text-xs text-zinc-500">The idea you want to validate — not what you feel like eating.</p>
           <input
             id="concept"
             className={inputClass}
@@ -88,18 +88,18 @@ export function AnalyzerForm({ concept, setConcept, cities, setCities, loading, 
           <label htmlFor="city" className="block text-sm font-medium">
             Cities to pilot in
           </label>
-          <p className="mb-1.5 text-xs text-slate-500">Add one, or several to compare them side by side.</p>
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-200 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:ring-accent-900">
+          <p className="mb-1.5 text-xs text-zinc-500">Add one, or several to compare them side by side.</p>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-sm focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-200 dark:border-zinc-700 dark:bg-zinc-900 dark:focus-within:ring-accent-900">
             {cities.map((c) => (
               <span
                 key={c}
-                className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
               >
                 {c}
                 <button
                   type="button"
                   onClick={() => removeCity(c)}
-                  className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                  className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                   aria-label={`Remove ${c}`}
                 >
                   ×

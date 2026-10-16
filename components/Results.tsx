@@ -34,7 +34,7 @@ const JUDGING_STEPS = [
 
 function StepNumber({ n }: { n: number }) {
   return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-semibold text-white dark:bg-white dark:text-slate-900">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-semibold text-white dark:bg-white dark:text-zinc-900">
       {n}
     </span>
   );
@@ -46,10 +46,10 @@ export function Results({ result }: { result: PilotPackage }) {
   return (
     <div className="mt-10 flex flex-col gap-10">
       {(result.resolvedLocation || result.cachedAt) && (
-        <div className="-mb-4 flex flex-col gap-1 text-xs text-slate-400">
+        <div className="-mb-4 flex flex-col gap-1 text-xs text-zinc-400">
           {result.resolvedLocation && (
             <p>
-              Results for <span className="font-medium text-slate-600 dark:text-slate-300">{result.resolvedLocation}</span> (where Qloo
+              Results for <span className="font-medium text-zinc-600 dark:text-zinc-300">{result.resolvedLocation}</span> (where Qloo
               placed &quot;{result.city}&quot;). Not the city you meant? Add a state or country, e.g. &quot;Paris, TX&quot;.
             </p>
           )}
@@ -74,7 +74,7 @@ export function Results({ result }: { result: PilotPackage }) {
 
       <nav
         aria-label="Sections"
-        className="no-print sticky top-0 z-10 -mx-2 flex gap-1.5 overflow-x-auto border-b border-slate-200 bg-white/90 px-2 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90"
+        className="no-print sticky top-0 z-10 -mx-2 flex gap-1.5 overflow-x-auto border-b border-zinc-200 bg-white/90 px-2 py-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90"
       >
         {[
           result.agent ? ["verdict", "Verdict"] : undefined,
@@ -89,7 +89,7 @@ export function Results({ result }: { result: PilotPackage }) {
             <a
               key={id}
               href={`#${id}`}
-              className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+              className="shrink-0 rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
               {label}
             </a>
@@ -106,10 +106,10 @@ export function Results({ result }: { result: PilotPackage }) {
         <Section id="plan" title="Pilot plan" subtitle="Written by the agent from the cited Qloo facts">
           <ol className="flex flex-col gap-2.5">
             {agentPlan.map((step, i) => (
-              <li key={i} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+              <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
                 <StepNumber n={i + 1} />
                 <span>
-                  <strong className="font-medium text-slate-900 dark:text-slate-100">{step.when}:</strong> {step.text}
+                  <strong className="font-medium text-zinc-900 dark:text-zinc-100">{step.when}:</strong> {step.text}
                   <Citations ids={step.facts} facts={facts} />
                 </span>
               </li>
@@ -120,7 +120,7 @@ export function Results({ result }: { result: PilotPackage }) {
         <Section id="plan" title="4-week pilot plan" subtitle="Generic template — the same steps for every concept">
           <ol className="flex flex-col gap-2">
             {result.pilotPlan.map((step, i) => (
-              <li key={i} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+              <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
                 <StepNumber n={i + 1} />
                 {step}
               </li>
@@ -130,12 +130,12 @@ export function Results({ result }: { result: PilotPackage }) {
       )}
 
       <Section title="How to judge the pilot" subtitle="General practice for a one-night pilot — not derived from Qloo data">
-        <ul className="flex flex-col gap-2.5 text-sm text-slate-700 dark:text-slate-300">
+        <ul className="flex flex-col gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">
           {JUDGING_STEPS.map((step) => (
             <li key={step.title} className="flex gap-3">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
               <span>
-                <strong className="font-medium text-slate-900 dark:text-slate-100">{step.title}:</strong> {step.text}
+                <strong className="font-medium text-zinc-900 dark:text-zinc-100">{step.title}:</strong> {step.text}
               </span>
             </li>
           ))}
@@ -144,12 +144,12 @@ export function Results({ result }: { result: PilotPackage }) {
 
       {result.matchedTag && (
         <section>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-zinc-500">
             Matched Qloo tag:{" "}
-            <span className="rounded-full border border-slate-300 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:text-slate-300">
+            <span className="rounded-full border border-zinc-300 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
               {result.matchedTag.name}
             </span>{" "}
-            <span className="text-xs text-slate-400">({result.matchedTag.type.replace("urn:tag:", "")})</span>
+            <span className="text-xs text-zinc-400">({result.matchedTag.type.replace("urn:tag:", "")})</span>
           </p>
         </section>
       )}
@@ -160,7 +160,7 @@ export function Results({ result }: { result: PilotPackage }) {
             <VenueCard key={i} venue={v} rank={i + 1} recommended={v.name === result.agent?.analysis?.recommendedVenue?.name} />
           ))}
           {result.venues.length === 0 && (
-            <p className="text-sm text-slate-500">No matching venues found for this city/concept.</p>
+            <p className="text-sm text-zinc-500">No matching venues found for this city/concept.</p>
           )}
         </div>
       </Section>
@@ -182,10 +182,10 @@ export function Results({ result }: { result: PilotPackage }) {
             {result.regionInsights.map((r, i) => (
               <span
                 key={i}
-                className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-700 dark:border-slate-800 dark:text-slate-300"
+                className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
                 title={`${r.mentions} mentions`}
               >
-                {r.keyword} <span className="text-slate-400">× {r.mentions}</span>
+                {r.keyword} <span className="text-zinc-400">× {r.mentions}</span>
               </span>
             ))}
           </div>
