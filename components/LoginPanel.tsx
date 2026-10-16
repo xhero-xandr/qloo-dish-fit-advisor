@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { inputClass } from "./ui";
 
 export function LoginPanel({
   demo,
@@ -41,9 +42,6 @@ export function LoginPanel({
     signIn(username, password);
   }
 
-  const input =
-    "w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:ring-orange-900";
-
   return (
     <section className="no-print w-full rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-lg shadow-orange-900/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
       <h2 className="text-lg font-semibold">Sign in to run an analysis</h2>
@@ -74,7 +72,7 @@ export function LoginPanel({
           <label className="text-xs font-medium text-zinc-500">
             Username
             <input
-              className={`${input} mt-1`}
+              className={`${inputClass} mt-1`}
               value={username}
               autoComplete="username"
               onChange={(e) => setUsername(e.target.value)}
@@ -84,7 +82,7 @@ export function LoginPanel({
           <label className="text-xs font-medium text-zinc-500">
             Password
             <input
-              className={`${input} mt-1`}
+              className={`${inputClass} mt-1`}
               type="password"
               value={password}
               autoComplete="current-password"
