@@ -9,6 +9,9 @@ import type { Tag } from "./facts.ts";
 /** The input couldn't be mapped to Qloo's vocabulary — a client-side problem, not an upstream failure. */
 export class ConceptNotFoundError extends Error {}
 
+/** Qloo has no venue data at all for the city that was typed — a typo, or a place it does not cover. */
+export class CityNotFoundError extends Error {}
+
 export function isRateLimitError(error: unknown): boolean {
   return error instanceof QlooQuotaError;
 }

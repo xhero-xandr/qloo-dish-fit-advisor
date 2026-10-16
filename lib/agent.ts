@@ -200,7 +200,9 @@ async function runTagConversation(
       ...SAMPLING,
       maxRetries: LLM_MAX_RETRIES,
       abortSignal: abort.signal,
-      timeout: { totalMs: 120_000 },
+      // A stalled call must not hold the visitor for two minutes: past this the pipeline falls back to the
+      // deterministic tag choice, which needs no model.
+      timeout: { totalMs: 50_000, stepMs: 30_000 },
     });
   } catch (error) {
     throw quotaError ?? error;
@@ -299,7 +301,7 @@ export async function synthesizeWithAgent(
       output: Output.object({ schema: ANALYSIS_SCHEMA }),
       ...SAMPLING,
       maxRetries: LLM_MAX_RETRIES,
-      timeout: { totalMs: 90_000 },
+      timeout: { totalMs: 60_000, stepMs: 60_000 },
     });
     return { model: label, value: output };
   });

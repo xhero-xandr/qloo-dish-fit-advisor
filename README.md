@@ -134,6 +134,23 @@ is `generateText` with `Output.object` and a zod schema.
   all 51 hits it raised were suggestions in menu notes and plan steps, which
   is why those are exempt. The rule is exercised by the unit tests
   (`npm test`).
+- **An unknown city fails in a second, not after a minute:** Qloo answers
+  400 "unable to resolve to a valid locality" for a city it cannot place
+  ("Philidelphia"). One cheap lookup up front turns that into a clear 422
+  before any model call is made.
+- **The no-model baseline copes with real phrasing:** words about the
+  business ("ghost kitchen", "seasonal", "special") are skipped, the first
+  two food words are also searched as a phrase ("farm-to-table seasonal
+  menu" -> "farm table", which finds Qloo's Farm-to-Table tag), and
+  `culinary_style` tags rank with cuisines. Before, "ghost kitchen for halal
+  fried chicken wings" cut off "chicken" and "farm-to-table seasonal menu"
+  found no venues.
+- **Where the time goes:** each analysis returns a `timingsMs` breakdown.
+  On a slow Gemini afternoon a one-word reply took 8-13 s, so the tag agent
+  (3-5 sequential model turns) cost 30-55 s while Qloo calls stayed at
+  0.4-0.9 s and the analysis at 8-14 s. A model call that stalls is cut off
+  at 50 s (tag choice) / 60 s (analysis) and the pipeline falls back to the
+  deterministic path.
 - **Recipes and ingredient lists map to a style, not to each ingredient:** a
   chef will paste a recipe more often than a cuisine name. The tag agent is
   told to infer the cuisine, style or venue format and anchor on that.

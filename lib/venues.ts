@@ -125,6 +125,7 @@ export function rankTagsForPlaceMatching(
     "urn:tag:category:place": 3,
     "urn:tag:genre:place": 3,
     "urn:tag:cuisine:qloo": 2,
+    "urn:tag:culinary_style:qloo": 2,
     "urn:tag:genre_category:qloo": 1,
   };
   return [...tags].sort((a, b) => {
@@ -137,18 +138,30 @@ export function rankTagsForPlaceMatching(
 const STOPWORDS = new Set([
   "style", "styled", "inspired", "small", "plates", "plate", "dish", "dishes", "menu", "concept",
   "the", "a", "an", "and", "or", "with", "of", "based",
+  // Words about the business, not the food: "ghost kitchen for halal fried chicken wings" is about chicken.
+  "ghost", "kitchen", "special", "specials", "seasonal", "pop", "popup", "item", "items", "new", "our",
+  "for", "from", "into", "house", "homemade", "made", "fresh", "local", "serving", "offer", "offering",
 ]);
 
-/** Pull individual meaningful keywords out of a free-text concept (e.g. "izakaya-style small plates" -> ["izakaya"]). */
+/**
+ * Pull individual meaningful keywords out of a free-text concept (e.g. "izakaya-style small plates" ->
+ * ["izakaya"]). When there are at least two, the first two together come first as a phrase
+ * ("farm-to-table seasonal menu" -> "farm table"), because Qloo has tags like "Farm-to-Table".
+ */
 export function extractKeywords(concept: string): string[] {
-  const words = concept
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+  const words = Array.from(
+    new Set(
+      concept
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 2 && !STOPWORDS.has(w))
+    )
+  );
   // Cap the number of keywords: each one is a separate Qloo API call, and the event
   // key has a shared rate limit — a long concept phrase shouldn't fan out into a
   // dozen requests. The first few words usually carry the cuisine/dish signal anyway.
-  return Array.from(new Set(words)).slice(0, 3);
+  const singles = words.slice(0, 4);
+  return words.length >= 2 ? [`${words[0]} ${words[1]}`, ...singles] : singles;
 }
 
 

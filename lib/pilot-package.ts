@@ -11,7 +11,7 @@ import {
 import { buildFacts, type Tag } from "./facts";
 import { cacheKey, createResultCache } from "./result-cache";
 import { resolveCityQuery } from "./location";
-import { isRateLimitError, MIN_PILOT_VENUES, resolveTagDeterministically } from "./tags";
+import { CityNotFoundError, isRateLimitError, MIN_PILOT_VENUES, resolveTagDeterministically } from "./tags";
 import {
   aggregateDemographics,
   aggregateRegionInsights,
@@ -35,7 +35,7 @@ import {
   type SearchTags,
 } from "./agent";
 
-export { ConceptNotFoundError } from "./tags";
+export { CityNotFoundError, ConceptNotFoundError } from "./tags";
 
 export interface VenueCandidate {
   name: string;
@@ -94,6 +94,8 @@ export interface PilotPackage {
   pilotPlan: string[];
   ownerLetter: string;
   limitations: string[];
+  /** Milliseconds spent per stage of this run (city check, tag choice, venues, cultural affinity, analysis). */
+  timingsMs?: Record<string, number>;
   /** ISO timestamp — present only when this result was served from the short-lived cache instead of a fresh Qloo round-trip. */
   cachedAt?: string;
 }
@@ -147,7 +149,26 @@ function shortError(error: unknown): string {
 async function buildPilotPackageUncached(concept: string, city: string): Promise<PilotPackage> {
   const limitations: string[] = [];
   // What is sent to Qloo; the city as typed is still what the page and the letter show.
-  const qlooCity = await resolveCityQuery(city, probeLocation);
+  const timings: Record<string, number> = {};
+  let lapAt = Date.now();
+  const lap = (stage: string) => {
+    const now = Date.now();
+    timings[stage] = now - lapAt;
+    lapAt = now;
+  };
+  // One cheap lookup per distinct query, shared by the "does Qloo know this city" check and the city-query fix.
+  const probes = new Map<string, ReturnType<typeof probeLocation>>();
+  const probe = (q: string) => {
+    if (!probes.has(q)) probes.set(q, probeLocation(q));
+    return probes.get(q)!;
+  };
+  if ((await probe(city)) === null) {
+    throw new CityNotFoundError(
+      `Qloo has no venue data for "${city}". Check the spelling, or try a larger nearby city.`
+    );
+  }
+  const qlooCity = await resolveCityQuery(city, probe);
+  lap("city");
   const agentEnabled = isLlmConfigured();
   const agentNotes: string[] = [];
 
@@ -226,6 +247,8 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     }
   }
 
+  lap("tags");
+
   // The insights API does not return these ordered by relevance to the tag,
   // so use rating as a proxy for venue quality until a sharper signal is wired in.
   places = [...places].sort((a, b) => (b.properties?.business_rating ?? 0) - (a.properties?.business_rating ?? 0));
@@ -261,11 +284,13 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     })
   );
 
+  lap("venues");
   const aggregate = aggregateDemographics(venues);
   const vibeWords = Array.from(new Set(venues.flatMap((v) => v.vibeTags))).slice(0, 10);
   const regionInsights = aggregateRegionInsights(topPlaces);
   const culturalAffinity =
     topPlaces.length > 0 ? await fetchCulturalAffinity(topPlaces.map((p) => p.entity_id), qlooCity) : undefined;
+  lap("cultural");
 
   let agent: AgentOutput | undefined;
   if (agentEnabled) {
@@ -292,6 +317,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
       }
     }
     agent = { tagDecision, analysis, facts, notes: agentNotes };
+    lap("analysis");
   }
 
   const tastingBrief = [
@@ -357,5 +383,6 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     pilotPlan,
     ownerLetter,
     limitations,
+    timingsMs: timings,
   };
 }

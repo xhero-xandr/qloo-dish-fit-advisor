@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { geoMatches, parseCityQuery, resolveCityQuery, type Geo } from "../lib/location.ts";
+import { geoMatches, isUnknownLocalityError, parseCityQuery, resolveCityQuery, type Geo } from "../lib/location.ts";
 
 const geo = (city: string, admin1: string, country = "United States"): Geo => ({ city, admin1_region: admin1, country });
 
@@ -51,4 +51,11 @@ test("no comma or a short abbreviation is passed through without any probe", asy
 
 test("when Qloo gives nothing back the typed query is used as it is", async () => {
   assert.equal(await resolveCityQuery("Boise, ID", async () => undefined), "Boise, ID");
+});
+
+test("only Qloo's 'cannot place this city' answer counts as an unknown city, not an outage", () => {
+  const real = new Error('Qloo API 400 on /v2/insights: {"errors":[{"message":"filter.location.query is unable to resolve to a valid locality."}]}');
+  assert.equal(isUnknownLocalityError(real), true);
+  assert.equal(isUnknownLocalityError(new Error("Qloo API 500 on /v2/insights: boom")), false);
+  assert.equal(isUnknownLocalityError("nope"), false);
 });

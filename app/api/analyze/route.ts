@@ -1,6 +1,6 @@
 import { clientKey, isAuthEnabled, rateLimit, requestHasSession } from "@/lib/auth";
 import { validateInput } from "@/lib/input";
-import { buildPilotPackage, ConceptNotFoundError } from "@/lib/pilot-package";
+import { buildPilotPackage, CityNotFoundError, ConceptNotFoundError } from "@/lib/pilot-package";
 
 // Per client: each analysis spends shared Qloo and Gemini quota. Comparing several cities
 // sends one request per city, so this leaves room for a few comparisons an hour.
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const result = await buildPilotPackage(concept, city);
     return Response.json(result);
   } catch (error) {
-    if (error instanceof ConceptNotFoundError) {
+    if (error instanceof ConceptNotFoundError || error instanceof CityNotFoundError) {
       return Response.json({ error: error.message }, { status: 422 });
     }
     const message = error instanceof Error ? error.message : "Unknown error while calling Qloo.";

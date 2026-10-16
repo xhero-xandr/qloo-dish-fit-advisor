@@ -102,13 +102,18 @@ export function geoMatches(query: string, geo: Geo | undefined): boolean {
  */
 export async function resolveCityQuery(
   query: string,
-  probe: (q: string) => Promise<Geo | undefined>,
+  probe: (q: string) => Promise<Geo | null | undefined>,
 ): Promise<string> {
   const { city } = parseCityQuery(query);
   if (!query.includes(",") || city.length <= 3) return query;
   const typed = await probe(query);
-  if (!typed || geoMatches(query, typed)) return query;
+  if (!typed || geoMatches(query, typed)) return query; // nothing to go on, or it landed correctly
   const bare = query.split(",")[0].trim();
   const alt = await probe(bare);
-  return geoMatches(query, alt) ? bare : query;
+  return alt && geoMatches(query, alt) ? bare : query;
+}
+
+/** Qloo answers 400 when it cannot place the city at all; that is "no such city", not an outage. */
+export function isUnknownLocalityError(error: unknown): boolean {
+  return error instanceof Error && /unable to resolve to a valid locality/i.test(error.message);
 }

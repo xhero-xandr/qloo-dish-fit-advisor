@@ -1,3 +1,5 @@
+import { isUnknownLocalityError } from "./location.ts";
+
 // Thin server-side client for the Qloo Insights API (hackathon endpoint).
 // Docs: https://docs.qloo.com/reference/insights-api-deep-dive
 
@@ -180,12 +182,15 @@ export async function recommendByEntities(
   return data.results?.entities ?? [];
 }
 
-/** Where Qloo places a city query: the geocode of the first restaurant it returns there. */
-export async function probeLocation(query: string): Promise<QlooPlace["properties"]["geocode"] | undefined> {
+/**
+ * Where Qloo places a city query: the geocode of the first restaurant it returns there. `null` means Qloo
+ * answered and has no restaurants there at all; `undefined` means the lookup itself failed.
+ */
+export async function probeLocation(query: string): Promise<QlooPlace["properties"]["geocode"] | null | undefined> {
   try {
     const found = await findPlacesByTags(["urn:tag:genre:place:restaurant"], query, 1);
-    return found[0]?.properties?.geocode;
-  } catch {
-    return undefined;
+    return found.length === 0 ? null : found[0].properties?.geocode;
+  } catch (error) {
+    return isUnknownLocalityError(error) ? null : undefined;
   }
 }

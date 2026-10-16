@@ -80,10 +80,32 @@ test("rankTagsForPlaceMatching puts broad place tags ahead of narrow compound on
   assert.equal(ranked[2].type, "urn:tag:genre:media", "a tag that is not a place tag comes last");
 });
 
-test("extractKeywords drops filler words, dedupes and keeps at most three", () => {
+test("extractKeywords drops filler words, dedupes, and leads with the first two words as a phrase", () => {
   assert.deepEqual(extractKeywords("izakaya-style small plates"), ["izakaya"]);
-  assert.deepEqual(extractKeywords("Korean fried chicken with natural wine pairing"), ["korean", "fried", "chicken"]);
+  assert.deepEqual(extractKeywords("Korean fried chicken with natural wine pairing"), [
+    "korean fried",
+    "korean",
+    "fried",
+    "chicken",
+    "natural",
+  ]);
   assert.deepEqual(extractKeywords("pizza pizza PIZZA"), ["pizza"]);
+});
+
+test("extractKeywords looks past words about the business to the food", () => {
+  const out = extractKeywords("ghost kitchen for halal fried chicken wings");
+  assert.deepEqual(out.slice(0, 2), ["halal fried", "halal"]);
+  assert.ok(out.includes("chicken"), "the chicken is not cut off by 'ghost' and 'kitchen'");
+  assert.ok(!out.includes("kitchen") && !out.includes("ghost"));
+  assert.equal(extractKeywords("farm-to-table seasonal menu")[0], "farm table", "Qloo has a Farm-to-Table tag");
+});
+
+test("culinary-style tags rank alongside cuisines", () => {
+  const ranked = rankTagsForPlaceMatching([
+    { id: "urn:tag:genre:media:farm_table", name: "Farm table", type: "urn:tag:genre:media" },
+    { id: "urn:tag:culinary_style:qloo:farm_to_table", name: "Farm-to-Table", type: "urn:tag:culinary_style:qloo" },
+  ]);
+  assert.equal(ranked[0].name, "Farm-to-Table");
 });
 
 test("describeResolvedLocation names what Qloo geocoded the query to", () => {
