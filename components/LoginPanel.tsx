@@ -14,15 +14,14 @@ export function LoginPanel({
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function signIn(user: string, pass: string) {
     setBusy(true);
     setError(undefined);
     try {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: user, password: pass }),
       });
       if (res.ok) {
         onSignedIn();
@@ -37,34 +36,35 @@ export function LoginPanel({
     }
   }
 
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    signIn(username, password);
+  }
+
   const input =
     "w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:ring-orange-900";
 
   return (
-    <section className="no-print max-w-md rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-lg shadow-orange-900/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+    <section className="no-print w-full rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-lg shadow-orange-900/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
       <h2 className="text-lg font-semibold">Sign in to run an analysis</h2>
       <p className="mt-1 text-sm text-zinc-500">
         Each analysis spends shared Qloo and Gemini quota, so it sits behind a demo account.
       </p>
 
       {demo && (
-        <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-950 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-200">
-          <p className="font-medium">Demo account</p>
-          <p className="mt-1 font-mono text-xs">
-            username: {demo.username}
-            <br />
-            password: {demo.password}
-          </p>
+        <div className="mt-4">
           <button
             type="button"
-            onClick={() => {
-              setUsername(demo.username);
-              setPassword(demo.password);
-            }}
-            className="mt-2 text-xs font-medium underline underline-offset-2"
+            disabled={busy}
+            onClick={() => signIn(demo.username, demo.password)}
+            className="w-full rounded-xl bg-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
           >
-            Fill in the demo account
+            {busy ? "Signing in…" : "Continue with the demo account"}
           </button>
+          <p className="mt-2 text-center text-xs text-zinc-500">
+            Demo login: <span className="font-mono">{demo.username}</span> / <span className="font-mono">{demo.password}</span>
+          </p>
+          <p className="mt-4 text-center text-xs text-zinc-400">or sign in manually</p>
         </div>
       )}
 
@@ -98,7 +98,11 @@ export function LoginPanel({
         <button
           type="submit"
           disabled={busy}
-          className="rounded-xl bg-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+          className={`rounded-xl px-6 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50 ${
+            demo
+              ? "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              : "bg-orange-600 text-white hover:bg-orange-700"
+          }`}
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>

@@ -149,7 +149,10 @@ export default function Home() {
   return (
     <div className="min-h-screen text-zinc-900 dark:text-zinc-50">
       <main className="mx-auto max-w-4xl px-6 py-14 print:max-w-none print:p-0">
-        <header className="mb-10 no-print">
+        {auth === "required" ? (
+          <div className="no-print">
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+              <header>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-800 dark:border-orange-900 dark:bg-orange-950/60 dark:text-orange-300">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
             Built on Qloo&apos;s live taste graph — no mock data
@@ -170,10 +173,39 @@ export default function Home() {
             ))}
           </ul>
 
-          <MethodologyDetails />
-        </header>
+</header>
+              <LoginPanel demo={demo} onSignedIn={checkSession} />
+            </div>
+            <div className="mt-10">
+              <MethodologyDetails />
+            </div>
+          </div>
+        ) : (
+          <header className="mb-10 no-print">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-800 dark:border-orange-900 dark:bg-orange-950/60 dark:text-orange-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+            Built on Qloo&apos;s live taste graph — no mock data
+          </div>
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            Dish-Market{" "}
+            <span className="bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">Fit Advisor</span>
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
+            Test a new dish or menu before you invest in it. Describe the concept and a city — get real venues to pilot
+            it in, who their audience is, and a cited 4-week plan, all grounded in Qloo&apos;s taste graph.
+          </p>
+          <ul className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+            {["Real, named venues", "Audience & cross-domain taste", "Plan from the venue's real hours", "Every claim cites its source"].map((t) => (
+              <li key={t} className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/50">
+                {t}
+              </li>
+            ))}
+          </ul>
 
-        {auth === "required" && <LoginPanel demo={demo} onSignedIn={checkSession} />}
+
+            <MethodologyDetails />
+          </header>
+        )}
 
         {auth === "ok" && (
           <>
