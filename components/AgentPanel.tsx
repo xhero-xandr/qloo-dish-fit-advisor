@@ -97,7 +97,7 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
           <p className="mb-1.5 flex items-center gap-2 text-xs font-medium text-zinc-500">
             Verdict
             {analysis.verdict.fit && (
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${FIT_STYLE[analysis.verdict.fit]}`}>
+              <span className={`rounded-full px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wide ${FIT_STYLE[analysis.verdict.fit]}`}>
                 {analysis.verdict.fit} fit
               </span>
             )}

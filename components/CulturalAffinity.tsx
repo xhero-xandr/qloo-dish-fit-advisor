@@ -19,7 +19,7 @@ function SignalRow({ title, items }: { title: string; items: CulturalSignalItem[
             )}
             <div>
               <p className="text-xs font-medium leading-tight">{item.name}</p>
-              {item.subtitle && <p className="text-[10px] leading-tight text-zinc-400">{item.subtitle}</p>}
+              {item.subtitle && <p className="text-[12px] leading-tight text-zinc-400">{item.subtitle}</p>}
             </div>
           </div>
         ))}

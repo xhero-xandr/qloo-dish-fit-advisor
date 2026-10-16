@@ -16,7 +16,7 @@ export function AppBar({ signedIn, onSignOut }: { signedIn?: boolean; onSignOut?
           <span className="hidden items-center gap-2 text-xs text-zinc-600 sm:flex dark:text-zinc-400">
             <span
               aria-hidden
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-100 text-[11px] font-semibold text-accent-800 dark:bg-accent-950 dark:text-accent-300"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-100 text-[13px] font-semibold text-accent-800 dark:bg-accent-950 dark:text-accent-300"
             >
               D
             </span>

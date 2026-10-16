@@ -26,7 +26,7 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
       )}
       <div className="p-4">
         {recommended && (
-          <p className="mb-2 inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+          <p className="mb-2 inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-[13px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
             Recommended for the pilot
           </p>
         )}
@@ -48,7 +48,7 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
             {venue.dietaryOptions.map((d, j) => (
               <span
                 key={j}
-                className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[13px] font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                 title="Dietary option listed by Qloo for this venue"
               >
                 🌱 {d}
@@ -67,7 +67,7 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
             {venue.vibeTags.map((t, j) => (
               <span
                 key={j}
-                className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                className="rounded-full bg-zinc-100 px-2 py-0.5 text-[13px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
               >
                 {t}
               </span>

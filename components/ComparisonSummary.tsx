@@ -97,7 +97,7 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
                   <td className="px-4 py-2.5 font-medium">
                     {s.city}
                     {winner?.city === s.city && (
-                      <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[12px] font-semibold text-white">
                         BEST FIT
                       </span>
                     )}

@@ -1,4 +1,4 @@
-const CODE = "rounded bg-zinc-200/70 px-1 py-0.5 text-[11px] dark:bg-zinc-800";
+const CODE = "rounded bg-zinc-200/70 px-1 py-0.5 text-[13px] dark:bg-zinc-800";
 
 export function MethodologyDetails() {
   return (

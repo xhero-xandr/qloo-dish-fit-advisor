@@ -34,7 +34,7 @@ const JUDGING_STEPS = [
 
 function StepNumber({ n }: { n: number }) {
   return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-semibold text-white dark:bg-white dark:text-zinc-900">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[12px] font-semibold text-white dark:bg-white dark:text-zinc-900">
       {n}
     </span>
   );

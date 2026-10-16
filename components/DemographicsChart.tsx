@@ -54,7 +54,7 @@ export function DemographicsChart({ demo }: { demo: Demographics }) {
 
   return (
     <div className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] text-zinc-500">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13px] text-zinc-500">
         <span className="flex items-center gap-1.5">
           <span className={`h-2.5 w-2.5 rounded-full ${UNDER}`} aria-hidden /> fewer than the general population
         </span>
@@ -77,7 +77,7 @@ export function DemographicsChart({ demo }: { demo: Demographics }) {
             <Row label="Male" value={male} max={max} wide />
             <Row label="Female" value={female} max={max} wide />
           </div>
-          <p className="mt-4 text-[11px] leading-relaxed text-zinc-500">
+          <p className="mt-4 text-[13px] leading-relaxed text-zinc-500">
             Qloo affinity scores vs. the general population for people who like these venues — a tendency of the
             audience, not a prediction about any individual.
           </p>
