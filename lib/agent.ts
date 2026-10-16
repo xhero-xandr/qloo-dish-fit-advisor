@@ -4,6 +4,7 @@
 
 import { generateText, hasToolCall, isStepCount, Output, tool } from "ai";
 import { z } from "zod";
+import { unsupportedNumbers } from "./claims";
 import { formatSlot, parseSlot, slotProblem, suggestTastingSlot, type WeekWindows } from "./hours";
 import { isModelParked, LLM_MAX_RETRIES, llmModels, parkIfQuotaSpent, type ChainModel } from "./llm";
 import { QlooQuotaError, type QlooPlace, type QlooTag } from "./qloo";
@@ -304,20 +305,25 @@ export async function synthesizeWithAgent(
   let dropped = 0;
   const cite = (ids: unknown): string[] =>
     Array.isArray(ids) ? Array.from(new Set(ids.map(String).filter((id) => factIds.has(id)))) : [];
-  function keep<T extends { facts: string[] }>(item: T | undefined): T | undefined {
+  const factText = new Map(facts.map((f) => [f.id, f.text]));
+  // `claim` is the sentence that states something about the data. Its numbers must appear in the facts
+  // it cites. Menu notes and plan steps are suggestions ("3-5 dishes", "15-25 guests"), not claims
+  // about the data, so they are only held to the citation rule.
+  function keep<T extends { facts: string[] }>(item: T | undefined, claim?: (i: T) => string): T | undefined {
     if (!item) return undefined;
     const facts = cite(item.facts);
-    if (facts.length === 0) {
+    const unbacked = claim && unsupportedNumbers(claim(item), facts.map((id) => factText.get(id) ?? "")).length > 0;
+    if (facts.length === 0 || unbacked) {
       dropped++;
       return undefined;
     }
     return { ...item, facts };
   }
-  const keepAll = <T extends { facts: string[] }>(items: T[] | undefined): T[] =>
-    (items ?? []).map((i) => keep(i)).filter((i): i is T => Boolean(i));
+  const keepAll = <T extends { facts: string[] }>(items: T[] | undefined, claim?: (i: T) => string): T[] =>
+    (items ?? []).map((i) => keep(i, claim)).filter((i): i is T => Boolean(i));
 
   const factVenue = new Map(facts.map((f) => [f.id, f.venue]));
-  let recommendedVenue = keep(value.recommendedVenue);
+  let recommendedVenue = keep(value.recommendedVenue, (r) => r.why);
   if (recommendedVenue) {
     const match = venueNames.find((n) => n.toLowerCase() === recommendedVenue!.name.trim().toLowerCase());
     // The recommendation may cite general facts, but not another venue's facts, and it
@@ -331,7 +337,7 @@ export async function synthesizeWithAgent(
     }
   }
 
-  const verdict = keep(value.verdict);
+  const verdict = keep(value.verdict, (v) => v.text);
 
   // The tasting night must fit the venue's real hours. The agent's wording is checked, and a
   // window that is on a closed day, outside the hours, or before the evening (when the venue
@@ -354,7 +360,7 @@ export async function synthesizeWithAgent(
     recommendedVenue,
     pilotPlan,
     menuNotes: keepAll(value.menuNotes),
-    risks: keepAll(value.risks),
+    risks: keepAll(value.risks, (r) => r.text),
     droppedItems: dropped,
     correctedItems: corrected,
   };

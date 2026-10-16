@@ -11,7 +11,7 @@ cannot be done from the code alone.
 | 2 | Enable Gemini billing so judges are not pushed onto the no-LLM fallback by the free daily quota | needs owner |
 | 3 | Keep `.claude/` and other local tooling out of the public repository | done |
 | 4 | Unit tests for the parts that decide correctness without a network: opening-hours checks, the session signature, the rate limiter | done |
-| 5 | Code-side check that numbers and venue names inside a cited sentence appear in the cited facts | planned |
+| 5 | Code-side check that numbers inside a cited claim appear in the cited facts (verdict, recommendation, risks). Venue names are still unchecked | done (numbers) |
 | 6 | Split `lib/pilot-package.ts` (fact building, agent call, response shaping) | planned |
 
 ## After the hackathon

@@ -124,6 +124,16 @@ is `generateText` with `Output.object` and a zod schema.
   must cite numbered facts and are dropped if they don't; the recommended
   venue must be one of the matched venues and must cite at least one fact
   about *that* venue (citing another venue's facts is stripped).
+- **Numbers in a claim must be in the facts it cites:** the verdict, the
+  recommended venue's reason and each risk are checked in code
+  (`lib/claims.ts`): every number the sentence states (a rating, a count, a
+  price) must also appear in the cited facts, otherwise the item is dropped.
+  Menu notes and plan steps are exempt, because "3-5 dishes" and "15-25
+  guests" are suggestions, not claims about the data. Run against 239 saved
+  agent sentences this flagged none of the verdicts, reasons or risks, and
+  all 51 hits it raised were suggestions in menu notes and plan steps, which
+  is why those are exempt. The rule is exercised by the unit tests
+  (`npm test`).
 - **Plan steps cite only when they state something about the data:** steps
   like "send the outreach letter" or "review the night against the agreed
   success bar" make no claim about Qloo's data and cite nothing; a step that
