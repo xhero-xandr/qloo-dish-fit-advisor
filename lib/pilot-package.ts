@@ -3,13 +3,23 @@ import {
   findPlacesByTags,
   audienceDemographics,
   recommendByEntities,
-  QlooQuotaError,
   type QlooPlace,
   type QlooTag,
   type DemographicsResult,
-  type CrossDomainEntity,
 } from "./qloo";
-import { AGE_BUCKETS, buildFacts, type Tag } from "./facts";
+import { buildFacts, type Tag } from "./facts";
+import { cacheKey, createResultCache } from "./result-cache";
+import { isRateLimitError, MIN_PILOT_VENUES, resolveTagDeterministically } from "./tags";
+import {
+  aggregateDemographics,
+  aggregateRegionInsights,
+  describeResolvedLocation,
+  extractDietaryOptions,
+  DIETARY_TAG_TYPE,
+  formatHours,
+  isOperating,
+  toCulturalSignalItems,
+} from "./venues";
 import { weekWindows, type WeekWindows } from "./hours";
 import { isLlmConfigured } from "./llm";
 import {
@@ -20,6 +30,8 @@ import {
   type Fact,
   type SearchTags,
 } from "./agent";
+
+export { ConceptNotFoundError } from "./tags";
 
 export interface VenueCandidate {
   name: string;
@@ -82,110 +94,6 @@ export interface PilotPackage {
   cachedAt?: string;
 }
 
-/** Average per-venue affinity scores into one aggregate audience profile for the hero chart. */
-function aggregateDemographics(venues: VenueCandidate[]): DemographicsResult | undefined {
-  const withDemo = venues.filter((v) => v.demographics);
-  if (withDemo.length === 0) return undefined;
-
-  const age: Record<string, number> = {};
-  for (const bucket of AGE_BUCKETS) {
-    const values = withDemo.map((v) => v.demographics?.age?.[bucket] ?? 0);
-    age[bucket] = values.reduce((a, b) => a + b, 0) / values.length;
-  }
-  const maleValues = withDemo.map((v) => v.demographics?.gender?.male ?? 0);
-  const femaleValues = withDemo.map((v) => v.demographics?.gender?.female ?? 0);
-  return {
-    age,
-    gender: {
-      male: maleValues.reduce((a, b) => a + b, 0) / maleValues.length,
-      female: femaleValues.reduce((a, b) => a + b, 0) / femaleValues.length,
-    },
-  };
-}
-
-/**
- * Aggregate the review-derived keyword mentions Qloo attaches to each venue
- * (e.g. "brisket" mentioned 184 times) across all matched venues, as a proxy
- * for what this region's audience actually values in this niche — there is no
- * free-text review/complaint data in the API, only these aggregated counts.
- */
-function aggregateRegionInsights(places: QlooPlace[]): RegionInsight[] {
-  const totals = new Map<string, number>();
-  for (const p of places) {
-    for (const kw of p.properties?.keywords ?? []) {
-      totals.set(kw.name, (totals.get(kw.name) ?? 0) + kw.count);
-    }
-  }
-  return Array.from(totals.entries())
-    .map(([keyword, mentions]) => ({ keyword, mentions }))
-    .sort((a, b) => b.mentions - a.mentions)
-    .slice(0, 12);
-}
-
-function toCulturalSignalItems(entities: CrossDomainEntity[]): CulturalSignalItem[] {
-  return entities.map((e) => ({
-    name: e.name,
-    imageUrl: e.properties?.image?.url,
-    subtitle: (e.properties?.genres ?? e.properties?.primary_genres)?.slice(0, 2).join(", "),
-  }));
-}
-
-const DIETARY_TAG_TYPE = "urn:tag:dietary_option:qloo";
-
-/** Pull the dietary-option tags Qloo attached to a venue (vegan, gluten-free, halal, ...). */
-function extractDietaryOptions(tags: { id: string; name: string; type: string }[]): string[] {
-  return tags.filter((t) => t.type === DIETARY_TAG_TYPE).map((t) => t.name);
-}
-
-const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
-const DAY_SHORT: Record<string, string> = {
-  monday: "Mon",
-  tuesday: "Tue",
-  wednesday: "Wed",
-  thursday: "Thu",
-  friday: "Fri",
-  saturday: "Sat",
-  sunday: "Sun",
-};
-
-/** "Mon closed; Tue–Sun 17:00–23:00" from Qloo's per-day hours, or undefined if Qloo has none. */
-function formatHours(hours: NonNullable<QlooPlace["properties"]["hours"]> | undefined): string | undefined {
-  if (!hours) return undefined;
-  const perDay = DAYS.map((day) => {
-    const slots = hours[day];
-    if (!slots || slots.length === 0) return "unknown";
-    if (slots.every((s) => s.closed)) return "closed";
-    const open = slots
-      .filter((s) => !s.closed && s.opens && s.closes)
-      .map((s) => `${s.opens!.replace(/^T/, "").slice(0, 5)}–${s.closes!.replace(/^T/, "").slice(0, 5)}`);
-    return open.length > 0 ? open.join(", ") : "unknown";
-  });
-  if (perDay.every((t) => t === "unknown")) return undefined;
-
-  const groups: { from: string; to: string; text: string }[] = [];
-  DAYS.forEach((day, i) => {
-    const last = groups[groups.length - 1];
-    if (last && last.text === perDay[i]) last.to = day;
-    else groups.push({ from: day, to: day, text: perDay[i] });
-  });
-  return groups
-    .map((g) => `${g.from === g.to ? DAY_SHORT[g.from] : `${DAY_SHORT[g.from]}–${DAY_SHORT[g.to]}`} ${g.text}`)
-    .join("; ");
-}
-
-/**
- * Drop venues that can't host a pilot. Qloo's `is_closed` isn't enough on its own: some
- * listings have is_closed=false while every day of the week is marked closed (seen live,
- * e.g. a soul-food spot in Atlanta) — almost certainly a shut venue with a stale flag.
- */
-function isOperating(place: QlooPlace): boolean {
-  if (place.properties?.is_closed) return false;
-  const hours = place.properties?.hours;
-  if (!hours) return true;
-  const days = Object.values(hours);
-  return !(days.length > 0 && days.every((slots) => slots.length > 0 && slots.every((s) => s.closed)));
-}
-
 /** What the audience of the matched venues also favors in brands, TV shows, artists, and podcasts. */
 async function fetchCulturalAffinity(venueIds: string[], city: string): Promise<CulturalAffinity | undefined> {
   try {
@@ -208,156 +116,25 @@ async function fetchCulturalAffinity(venueIds: string[], city: string): Promise<
   }
 }
 
-/**
- * Rank candidate tags from broadest/most "place-matchable" to narrowest, so we can
- * try them in order against `findPlacesByTags` and stop at the first one that
- * actually returns venues. Qloo's semantic tag search often surfaces very narrow
- * compound tags (e.g. "izakaya_style_small_plates") ahead of the broad canonical
- * one ("izakaya") that places are actually tagged with.
- */
-function rankTagsForPlaceMatching(
-  tags: { id: string; name: string; type: string; properties?: { is_canonical?: boolean } }[]
-): { id: string; name: string; type: string }[] {
-  const typeWeight: Record<string, number> = {
-    "urn:tag:category:place": 3,
-    "urn:tag:genre:place": 3,
-    "urn:tag:cuisine:qloo": 2,
-    "urn:tag:genre_category:qloo": 1,
-  };
-  return [...tags].sort((a, b) => {
-    const score = (t: (typeof tags)[number]) =>
-      (typeWeight[t.type] ?? 0) * 10 + (t.properties?.is_canonical ? 5 : 0) - t.id.split("_").length;
-    return score(b) - score(a);
-  });
-}
-
-const STOPWORDS = new Set([
-  "style", "styled", "inspired", "small", "plates", "plate", "dish", "dishes", "menu", "concept",
-  "the", "a", "an", "and", "or", "with", "of", "based",
-]);
-
-/** Pull individual meaningful keywords out of a free-text concept (e.g. "izakaya-style small plates" -> ["izakaya"]). */
-function extractKeywords(concept: string): string[] {
-  const words = concept
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
-  // Cap the number of keywords: each one is a separate Qloo API call, and the event
-  // key has a shared rate limit — a long concept phrase shouldn't fan out into a
-  // dozen requests. The first few words usually carry the cuisine/dish signal anyway.
-  return Array.from(new Set(words)).slice(0, 3);
-}
-
-/** The input couldn't be mapped to Qloo's vocabulary — a client-side problem, not an upstream failure. */
-export class ConceptNotFoundError extends Error {}
-
-function isRateLimitError(error: unknown): boolean {
-  return error instanceof QlooQuotaError;
-}
-
-/** What Qloo actually geocoded the city query to, so a bare/ambiguous name (e.g. "Paris") doesn't silently resolve to the wrong place. */
-function describeResolvedLocation(place?: QlooPlace): string | undefined {
-  const geo = place?.properties?.geocode;
-  if (!geo?.city) return undefined;
-  const region = geo.admin1_region && geo.admin1_region !== geo.city ? geo.admin1_region : undefined;
-  return [geo.city, region, geo.country].filter(Boolean).join(", ");
-}
-
-/** A pilot needs candidates to choose between; fewer than this and the agent's tag must beat the baseline's. */
-const MIN_PILOT_VENUES = 3;
-
 // Identical concept+city requests reuse a result instead of re-spending quota. Long by default:
 // venue data doesn't change hour to hour, while the free Gemini tier allows ~500 requests/day
 // (~110 analyses) and judges mostly click the same presets.
-const CACHE_TTL_MS = Number(process.env.PILOT_CACHE_TTL_MINUTES ?? 12 * 60) * 60 * 1000;
-const DEGRADED_CACHE_TTL_MS = 10 * 60 * 1000;
-const CACHE_MAX_ENTRIES = 200;
-const resultCache = new Map<string, { data: PilotPackage; fetchedAt: number; expiresAt: number }>();
-const inFlight = new Map<string, Promise<PilotPackage>>();
-
-function cacheKey(concept: string, city: string): string {
-  return `${concept.trim().toLowerCase()}::${city.trim().toLowerCase()}`;
-}
+const resultCache = createResultCache<PilotPackage>({
+  ttlMs: Number(process.env.PILOT_CACHE_TTL_MINUTES ?? 12 * 60) * 60 * 1000,
+  degradedTtlMs: 10 * 60 * 1000,
+  maxEntries: 200,
+});
 
 export async function buildPilotPackage(concept: string, city: string): Promise<PilotPackage> {
-  const key = cacheKey(concept, city);
-  const cached = resultCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) {
-    return { ...cached.data, cachedAt: new Date(cached.fetchedAt).toISOString() };
-  }
-
-  // A double-submit or a second tab joins the run already in progress instead of starting another full pipeline.
-  const pending = inFlight.get(key);
-  if (pending) return pending;
-
-  const run = computeAndCache(key, concept, city);
-  inFlight.set(key, run);
-  try {
-    return await run;
-  } finally {
-    inFlight.delete(key);
-  }
-}
-
-async function computeAndCache(key: string, concept: string, city: string): Promise<PilotPackage> {
-  const result = await buildPilotPackageUncached(concept, city);
-
-  if (resultCache.size >= CACHE_MAX_ENTRIES) {
-    for (const [k, v] of resultCache) {
-      if (v.expiresAt <= Date.now()) resultCache.delete(k);
-    }
-    if (resultCache.size >= CACHE_MAX_ENTRIES) {
-      const oldestKey = resultCache.keys().next().value;
-      if (oldestKey) resultCache.delete(oldestKey);
-    }
-  }
-  // A result where the agent was enabled but fell back (every model overloaded or out of quota) is
-  // kept only briefly, so a transient outage doesn't pin the degraded version for half a day.
-  const degraded = (result.agent?.notes.length ?? 0) > 0;
-  const now = Date.now();
-  resultCache.set(key, { data: result, fetchedAt: now, expiresAt: now + (degraded ? DEGRADED_CACHE_TTL_MS : CACHE_TTL_MS) });
-
-  return result;
-}
-
-
-/** Baseline tag choice: stopword keywords + type-weighted ranking. Also the floor the agent must beat. */
-async function resolveTagDeterministically(
-  concept: string,
-  findVenues: (tagId: string) => Promise<QlooPlace[]>,
-  searchTags: SearchTags
-): Promise<{ primaryTag: Tag; places: QlooPlace[]; triedTagNames: string[] }> {
-  const queries = [concept, ...extractKeywords(concept)];
-  const tagResults = await Promise.all(
-    queries.map(async (q) => {
-      try {
-        return await searchTags(q);
-      } catch (error) {
-        if (isRateLimitError(error)) throw error;
-        return [];
-      }
-    })
+  const { data, cachedAt } = await resultCache.getOrCompute(
+    cacheKey(concept, city),
+    () => buildPilotPackageUncached(concept, city),
+    // The agent was enabled but fell back (every model overloaded or out of quota): keep it only briefly.
+    (result) => (result.agent?.notes.length ?? 0) > 0
   );
-  const candidateTags = Array.from(new Map(tagResults.flat().map((t) => [t.id, t])).values());
-  if (candidateTags.length === 0) {
-    throw new ConceptNotFoundError(
-      `Qloo couldn't find a taste tag close to "${concept}". Try rephrasing the concept (e.g. a specific cuisine or dish type).`
-    );
-  }
-
-  const rankedTags = rankTagsForPlaceMatching(candidateTags);
-  const triedTagNames: string[] = [];
-  for (const tag of rankedTags.slice(0, 4)) {
-    triedTagNames.push(tag.name);
-    try {
-      const found = await findVenues(tag.id);
-      if (found.length > 0) return { primaryTag: tag, places: found, triedTagNames };
-    } catch (error) {
-      if (isRateLimitError(error)) throw error;
-    }
-  }
-  return { primaryTag: rankedTags[0], places: [], triedTagNames };
+  return cachedAt ? { ...data, cachedAt } : data;
 }
+
 
 function shortError(error: unknown): string {
   return (error instanceof Error ? error.message : "unknown error").slice(0, 160);
