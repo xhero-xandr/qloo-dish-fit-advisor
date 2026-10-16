@@ -10,7 +10,7 @@ function formatPhone(phone: string): string {
 export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate; rank: number; recommended?: boolean }) {
   return (
     <div
-      className={`overflow-hidden rounded-xl border bg-white shadow-sm dark:bg-zinc-950 ${
+      className={`lift overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-zinc-950 ${
         recommended
           ? "border-emerald-400 ring-2 ring-emerald-200 dark:border-emerald-700 dark:ring-emerald-900"
           : "border-zinc-200 dark:border-zinc-800"

@@ -8,7 +8,8 @@ const BUTTON_BASE =
   "inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold shadow-sm transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400";
 
 const BUTTON_VARIANTS = {
-  primary: "bg-orange-600 px-6 py-3 text-white hover:bg-orange-700",
+  primary:
+    "bg-orange-600 px-6 py-3 text-white hover:-translate-y-px hover:bg-orange-700 hover:shadow-md hover:shadow-orange-600/30 motion-reduce:transform-none",
   secondary:
     "border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900",
 };

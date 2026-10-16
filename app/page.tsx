@@ -5,6 +5,7 @@ import { AnalyzerForm } from "@/components/AnalyzerForm";
 import { ComparisonSummary } from "@/components/ComparisonSummary";
 import { EmptyState } from "@/components/EmptyState";
 import { Hero } from "@/components/Hero";
+import { HowItWorks } from "@/components/HowItWorks";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { LoginPanel } from "@/components/LoginPanel";
 import { MethodologyDetails } from "@/components/MethodologyDetails";
@@ -60,7 +61,8 @@ export default function Home() {
               <Hero />
               <LoginPanel demo={demo} onSignedIn={refresh} />
             </div>
-            <div className="mt-10">
+            <HowItWorks />
+            <div className="mt-8">
               <MethodologyDetails />
             </div>
           </div>
@@ -68,20 +70,23 @@ export default function Home() {
 
         {auth === "ok" && (
           <>
-            <Hero>
+            <Hero
+              compact
+              minimal={!showForm}
+              aside={
+                authRequired && (
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="text-xs text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  >
+                    Sign out
+                  </button>
+                )
+              }
+            >
               <MethodologyDetails />
             </Hero>
-            {authRequired && (
-              <div className="no-print mt-6 flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="text-xs text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
 
             <div className="mt-6">
               {showForm ? (
@@ -102,7 +107,7 @@ export default function Home() {
             {loading && results.length === 0 && <LoadingSkeleton cities={requested.length || 1} />}
 
             {results.length > 0 && (
-              <div ref={resultsRef} className="print-surface mt-10 flex scroll-mt-4 flex-col gap-8">
+              <div ref={resultsRef} className="print-surface fade-up mt-10 flex scroll-mt-4 flex-col gap-10">
                 {loading && (
                   <p role="status" aria-live="polite" className="no-print rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm text-orange-900 dark:border-orange-900 dark:bg-orange-950/60 dark:text-orange-200">
                     {results.length} of {requested.length} {requested.length === 1 ? "city" : "cities"} ready — the rest are still

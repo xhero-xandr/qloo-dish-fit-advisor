@@ -59,3 +59,50 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* Motion: results fade up as they arrive; cards and buttons lift on hover.
+   Both are switched off for people who ask for reduced motion. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fade-up 0.5s ease both;
+}
+
+.lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(120, 53, 15, 0.12);
+  border-color: rgb(253 186 116);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    animation: none;
+  }
+  .lift,
+  .lift:hover {
+    transition: none;
+    transform: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@media print {
+  .fade-up {
+    animation: none;
+  }
+}
