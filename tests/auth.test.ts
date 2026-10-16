@@ -57,3 +57,51 @@ test("clientKey prefers the Cloudflare header, then x-forwarded-for", () => {
   assert.equal(auth.clientKey(xff), "2.2.2.2");
   assert.equal(auth.clientKey(new Request("http://x/")), "unknown");
 });
+
+test("a session lasts twelve hours", () => {
+  assert.equal(auth.SESSION_TTL_SECONDS, 12 * 60 * 60);
+});
+
+test("a token is still good at the second it expires and not after", () => {
+  const realNow = Date.now;
+  const token = auth.createSessionToken();
+  const expires = Number(token.split(".")[0]);
+  try {
+    Date.now = () => expires * 1000;
+    assert.equal(auth.sessionValid(token), true);
+    Date.now = () => expires * 1000 + 1500;
+    assert.equal(auth.sessionValid(token), false);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("clientKey trims the forwarded address and falls back to x-real-ip", () => {
+  assert.equal(auth.clientKey(new Request("http://x/", { headers: { "x-forwarded-for": "  2.2.2.2 , 3.3.3.3" } })), "2.2.2.2");
+  assert.equal(auth.clientKey(new Request("http://x/", { headers: { "x-real-ip": "4.4.4.4" } })), "4.4.4.4");
+});
+
+test("rate-limit hits expire with the window, to the millisecond", () => {
+  const realNow = Date.now;
+  let now = 1_000_000;
+  Date.now = () => now;
+  try {
+    assert.equal(auth.rateLimit("win", "k", 2, 1000), undefined);
+    now += 400;
+    assert.equal(auth.rateLimit("win", "k", 2, 1000), undefined);
+    now += 100;
+    assert.equal(auth.rateLimit("win", "k", 2, 1000), 1, "full; the oldest hit frees up in 500 ms, reported as 1 s");
+    now += 499;
+    assert.ok(auth.rateLimit("win", "k", 2, 1000) !== undefined, "999 ms after the first hit it still counts");
+    now += 1;
+    assert.equal(auth.rateLimit("win", "k", 2, 1000), undefined, "1000 ms after it, the window has moved on");
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("isHttps recognises a secure request either by header or by the url", () => {
+  assert.equal(auth.isHttps(new Request("http://x/", { headers: { "x-forwarded-proto": "https" } })), true);
+  assert.equal(auth.isHttps(new Request("https://x/")), true);
+  assert.equal(auth.isHttps(new Request("http://x/")), false);
+});

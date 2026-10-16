@@ -20,3 +20,10 @@ test("over-long input is rejected", () => {
   assert.match(validateInput("a".repeat(201), "Austin") ?? "", /under 200/);
   assert.match(validateInput("ramen", "c".repeat(101)) ?? "", /under 100/);
 });
+
+test("the length limits are inclusive: 200 and 100 characters are fine, one more is not", () => {
+  assert.equal(validateInput("a".repeat(200), "Austin"), undefined);
+  assert.equal(validateInput("ramen", "c".repeat(100)), undefined);
+  assert.match(validateInput("a".repeat(201), "Austin") ?? "", /under/);
+  assert.match(validateInput("ramen", "c".repeat(101)) ?? "", /under/);
+});

@@ -183,3 +183,78 @@ test("probeLocation tells 'no restaurants' and 'unknown city' apart from an outa
     restore();
   }
 });
+
+/** Records the waits the client asks for instead of making them, so retry timing can be checked exactly. */
+async function waitsFor(responses: (Response | Error)[], run: () => Promise<unknown>) {
+  const realSet = globalThis.setTimeout;
+  const waits: number[] = [];
+  stubFetch(responses);
+  globalThis.setTimeout = ((fn: () => void, ms?: number) => {
+    waits.push(Number(ms));
+    fn();
+    return 0 as never;
+  }) as unknown as typeof setTimeout;
+  try {
+    await run().catch(() => {});
+  } finally {
+    globalThis.setTimeout = realSet;
+    restore();
+  }
+  return waits.filter((w) => w !== 260);
+}
+const ok = () => json({ results: { tags: [] } });
+
+test("the wait after a 429 is what Qloo reports plus a margin, never more than five seconds", async () => {
+  assert.deepEqual(await waitsFor([new Response("", { status: 429, headers: { "x-second-ratelimit-reset": "2" } }), ok()], () => qloo.findTags("x")), [2150]);
+  assert.deepEqual(await waitsFor([new Response("", { status: 429, headers: { "x-second-ratelimit-reset": "30" } }), ok()], () => qloo.findTags("x")), [5000]);
+});
+
+test("without a usable reset header the wait grows by half a second a try, up to three seconds", async () => {
+  const rate = new Response("", { status: 429 });
+  const waits = await waitsFor([rate, rate, rate, ok()], () => qloo.findTags("x"));
+  assert.deepEqual(waits, [500, 1000, 1500]);
+  const many = await waitsFor([rate], () => qloo.findTags("x"));
+  assert.equal(Math.max(...many), 3000);
+  const zero = await waitsFor([new Response("", { status: 429, headers: { "x-second-ratelimit-reset": "0" } }), ok()], () => qloo.findTags("x"));
+  assert.deepEqual(zero, [500], "a reset of 0 is not trusted");
+  const junk = await waitsFor([new Response("", { status: 429, headers: { "x-second-ratelimit-reset": "soon" } }), ok()], () => qloo.findTags("x"));
+  assert.deepEqual(junk, [500]);
+});
+
+test("an error body is cut to 300 characters, and an unreadable one leaves the message intact", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    stubFetch([new Response("x".repeat(1000), { status: 400 })]);
+    await assert.rejects(settle(qloo.findTags("x")), (e: Error) => e.message.length < 400);
+    const broken = new Response("ignored", { status: 400 });
+    broken.text = () => Promise.reject(new Error("stream failed"));
+    globalThis.fetch = (async () => broken) as typeof fetch;
+    await assert.rejects(settle(qloo.findTags("x")), (e: Error) => /400 on \/v2\/tags: $/.test(e.message));
+  } finally {
+    restore();
+  }
+});
+
+test("the lookup of an unknown city asks for restaurants", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const calls = stubFetch([json({ results: { entities: [] } })]);
+  try {
+    await settle(qloo.probeLocation("Nowhere"));
+    assert.equal(calls[0].url.searchParams.get("filter.tags"), "urn:tag:genre:place:restaurant");
+    assert.equal(calls[0].url.searchParams.get("take"), "1");
+  } finally {
+    restore();
+  }
+});
+
+test("a missing results block is an empty list for places and recommendations too", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    stubFetch([json({})]);
+    assert.deepEqual(await settle(qloo.findPlacesByTags(["t"], "Austin")), []);
+    stubFetch([json({})]);
+    assert.deepEqual(await settle(qloo.recommendByEntities(["e"], "urn:entity:brand", "Austin")), []);
+  } finally {
+    restore();
+  }
+});

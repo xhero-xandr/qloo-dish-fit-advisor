@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "tap",
+  "tap": {
+    "testFiles": [
+      "tests/*.test.ts"
+    ],
+    "nodeArgs": []
+  },
+  "mutate": [
+    "lib/claims.ts",
+    "lib/hours.ts",
+    "lib/guards.ts",
+    "lib/facts.ts",
+    "lib/venues.ts",
+    "lib/location.ts",
+    "lib/tags.ts",
+    "lib/result-cache.ts",
+    "lib/input.ts",
+    "lib/auth.ts",
+    "lib/llm.ts",
+    "lib/qloo.ts"
+  ],
+  "coverageAnalysis": "off",
+  "reporters": [
+    "clear-text",
+    "progress"
+  ],
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": true,
+  "concurrency": 6,
+  "timeoutMS": 20000,
+  "ignorePatterns": [
+    ".next",
+    ".next-verify",
+    ".git",
+    "node_modules/.cache"
+  ]
+}

@@ -19,3 +19,11 @@ test("formatting differences do not matter", () => {
 test("a sentence with no numbers is never flagged", () => {
   assert.deepEqual(unsupportedNumbers("The venue serves yakitori.", []), []);
 });
+
+test("trailing zeros are ignored, other zeros are not", () => {
+  assert.deepEqual(unsupportedNumbers("4.500", ["rating 4.5"]), []);
+  assert.deepEqual(unsupportedNumbers("4.0", ["4"]), []);
+  assert.deepEqual(unsupportedNumbers("4.05", ["rating 4.5"]), ["4.05"]);
+  assert.deepEqual(unsupportedNumbers("100", ["rating 10"]), ["100"], "a whole number keeps its zeros");
+  assert.deepEqual(unsupportedNumbers("10", ["100 mentions"]), ["10"]);
+});

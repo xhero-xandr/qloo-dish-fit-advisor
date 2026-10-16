@@ -15,6 +15,7 @@ cannot be done from the code alone.
 | 4b | The checks applied to the model's answer (citations, own-venue rule, numbers, tasting window) live in `lib/guards.ts` with 11 tests | done |
 | 4c | Varied, non-preset input (other cuisines, ambiguous and non-US cities, another language, gibberish, an injection attempt) run live; the problems found are fixed and tested | done |
 | 4d | Tests for the Qloo client (params, spacing, 429 retry, quota exhaustion), model parking, the sign-in and analyze routes (status codes, limits, cookie flags) | done |
+| 4e | Mutation testing (`npm run mutate`) across the logic modules; tests added for what it showed, 67.5% to 92.4% | done |
 | 6 | Split `lib/pilot-package.ts` into `facts.ts`, `venues.ts` (data shaping), `tags.ts` (baseline tag choice) and `result-cache.ts`, each with tests; `pilot-package.ts` keeps only the orchestration | done |
 
 ## After the hackathon

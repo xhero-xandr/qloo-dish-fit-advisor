@@ -158,3 +158,94 @@ test("locationMismatch warns when Qloo placed the query somewhere else", () => {
   assert.match(w ?? "", /bare city name/);
   assert.equal(locationMismatch("Portland", undefined), undefined, "nothing to compare without a place");
 });
+
+// Added after a mutation run showed which changes to venues.ts no test noticed.
+import { toCulturalSignalItems } from "../lib/venues.ts";
+
+test("aggregateDemographics averages women as well as men, and every age bucket", () => {
+  const out = aggregateDemographics([
+    { demographics: { age: { "30_to_34": 0.2 }, gender: { male: 0.1, female: -0.1 } } },
+    { demographics: { age: { "30_to_34": 0.6 }, gender: { male: 0.3, female: -0.3 } } },
+  ] as never)!;
+  assert.ok(Math.abs(out.gender.female - -0.2) < 1e-9);
+  assert.ok(Math.abs(out.age["30_to_34"] - 0.4) < 1e-9);
+});
+
+test("aggregateRegionInsights puts the most-mentioned keyword first whatever order they arrive in", () => {
+  const out = aggregateRegionInsights([{ properties: { keywords: [{ name: "a", count: 5 }, { name: "b", count: 40 }, { name: "c", count: 12 }] } }] as never);
+  assert.deepEqual(out.map((k) => k.keyword), ["b", "c", "a"]);
+});
+
+test("toCulturalSignalItems carries the name, the picture, and at most two genres", () => {
+  const out = toCulturalSignalItems([
+    { name: "Show", entity_id: "1", subtype: "x", properties: { image: { url: "http://img" }, genres: ["Drama", "Crime", "Thriller"] } },
+    { name: "Band", entity_id: "2", subtype: "x", properties: { primary_genres: ["Rock"] } },
+    { name: "Plain", entity_id: "3", subtype: "x" },
+  ]);
+  assert.deepEqual(out[0], { name: "Show", imageUrl: "http://img", subtitle: "Drama, Crime" });
+  assert.equal(out[1].subtitle, "Rock");
+  assert.equal(out[2].subtitle, undefined);
+});
+
+test("formatHours shows only the real opening times, trimmed to hours and minutes", () => {
+  assert.equal(
+    formatHours({
+      monday: slot("T16:30:00", "T21:00:00"),
+      tuesday: [{ opens: "T11:00", closes: "T14:00", closed: false }, { opens: "T17:00", closes: "T22:00", closed: false }],
+      wednesday: [{ opens: "T10:00", closes: "T12:00", closed: false }, { opens: null, closes: null, closed: true }],
+      thursday: [{ opens: null, closes: "T20:00", closed: false }],
+      friday: [],
+    }),
+    "Mon 16:30–21:00; Tue 11:00–14:00, 17:00–22:00; Wed 10:00–12:00; Thu–Sun unknown"
+  );
+});
+
+test("hours that are unknown on every day are not reported at all", () => {
+  assert.equal(formatHours({ monday: [], tuesday: [{ opens: null, closes: null, closed: false }] }), undefined);
+});
+
+test("isOperating needs at least one day with hours that is not closed", () => {
+  assert.equal(isOperating({ properties: { hours: {} } } as never), true, "no days listed: assume open");
+  assert.equal(isOperating({ properties: { hours: { monday: closed, tuesday: [] } } } as never), true, "a day with no data is not a closed day");
+  assert.equal(isOperating({ properties: { hours: { monday: [{ opens: "T10:00", closes: "T11:00", closed: false }, { opens: null, closes: null, closed: true }] } } } as never), true, "one open slot is enough");
+  assert.equal(isOperating({ properties: { hours: { monday: closed, tuesday: closed, sunday: closed } } } as never), false);
+});
+
+test("rankTagsForPlaceMatching prefers the canonical tag and the shorter id at equal type", () => {
+  const t = (id: string, canonical = false) => ({ id, name: id, type: "urn:tag:cuisine:qloo", properties: { is_canonical: canonical } });
+  assert.deepEqual(rankTagsForPlaceMatching([t("a_b_c"), t("a"), t("a_b", true)]).map((x) => x.id), ["a_b", "a", "a_b_c"], "canonical +5 beats one fewer word");
+  assert.deepEqual(rankTagsForPlaceMatching([t("x_y_z"), t("x_y")]).map((x) => x.id), ["x_y", "x_y_z"]);
+});
+
+test("conceptMatchesTag matches a word to its plural either way round, but not short fragments", () => {
+  assert.equal(conceptMatchesTag("tacos", ["Taco"]), true);
+  assert.equal(conceptMatchesTag("pho", ["Pho"]), true, "a three-letter word matches itself");
+  assert.equal(conceptMatchesTag("bar", ["Barbecue"]), false, "a short word is not a stem of a longer one");
+  assert.equal(conceptMatchesTag("oz", ["Oz Bar"]), false, "two-letter words are ignored");
+  assert.equal(conceptMatchesTag("TACOS", ["tacos"]), true);
+});
+
+test("locationMismatch ignores spaces around a short abbreviation", () => {
+  assert.equal(locationMismatch(" NYC , NY", where("Brooklyn", "New York", "United States")), undefined);
+});
+
+test("words that describe the business rather than the food are never searched for", () => {
+  const filler = [
+    "style", "styled", "inspired", "small", "plates", "plate", "dish", "dishes", "menu", "concept", "the", "and", "with", "based",
+    "ghost", "kitchen", "special", "specials", "seasonal", "popup", "item", "items", "new", "our", "for", "from", "into",
+    "house", "homemade", "made", "fresh", "local", "serving", "offer", "offering",
+  ];
+  for (const word of filler) assert.deepEqual(extractKeywords(word), [], word);
+  assert.deepEqual(extractKeywords("pop up"), [], "'pop' and 'up' are both too short or filler");
+});
+
+test("rankTagsForPlaceMatching orders the tag families: place, cuisine, culinary style, genre category, then the rest", () => {
+  const t = (type: string) => ({ id: type, name: type, type });
+  const ranked = rankTagsForPlaceMatching([
+    t("urn:tag:genre:media"), t("urn:tag:genre_category:qloo"), t("urn:tag:cuisine:qloo"), t("urn:tag:category:place"), t("urn:tag:genre:place"),
+  ]).map((x) => x.type);
+  assert.deepEqual(ranked.slice(0, 2).sort(), ["urn:tag:category:place", "urn:tag:genre:place"]);
+  assert.equal(ranked[2], "urn:tag:cuisine:qloo");
+  assert.equal(ranked[3], "urn:tag:genre_category:qloo");
+  assert.equal(ranked[4], "urn:tag:genre:media");
+});

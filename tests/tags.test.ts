@@ -55,3 +55,24 @@ test("a rate-limit error is passed up, other search failures are tolerated", asy
   );
   assert.equal(out.primaryTag.name, "izakaya");
 });
+
+test("while checking tags for venues, a rate limit stops everything but any other failure moves to the next tag", async () => {
+  await assert.rejects(
+    resolveTagDeterministically("izakaya", async () => {
+      throw new QlooQuotaError("429");
+    }, async () => [tag("izakaya")]),
+    QlooQuotaError
+  );
+  let calls = 0;
+  const out = await resolveTagDeterministically(
+    "izakaya",
+    async (id) => {
+      calls++;
+      if (id === "urn:tag:first") throw new Error("flaky");
+      return [place("Fukumoto")];
+    },
+    async () => [tag("first"), tag("second")]
+  );
+  assert.equal(out.places.length, 1);
+  assert.ok(calls >= 2);
+});

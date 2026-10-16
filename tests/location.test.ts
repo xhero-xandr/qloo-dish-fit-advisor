@@ -59,3 +59,41 @@ test("only Qloo's 'cannot place this city' answer counts as an unknown city, not
   assert.equal(isUnknownLocalityError(new Error("Qloo API 500 on /v2/insights: boom")), false);
   assert.equal(isUnknownLocalityError("nope"), false);
 });
+
+test("only the name Washington is read as the District of Columbia", () => {
+  assert.equal(geoMatches("Washington, DC", geo("District of Columbia", "District of Columbia")), true);
+  assert.equal(geoMatches("Seattle", geo("District of Columbia", "District of Columbia")), false);
+});
+
+test("a three-letter name is taken as an abbreviation and passed through; four letters are checked", async () => {
+  let probes = 0;
+  const probe = async (q: string) => (probes++, q === "Lima" ? geo("Lima", "Lima", "Peru") : geo("Elsewhere", "X"));
+  assert.equal(await resolveCityQuery("Rio, Brazil", probe), "Rio, Brazil");
+  assert.equal(probes, 0);
+  assert.equal(await resolveCityQuery("Lima, Peru", probe), "Lima");
+  assert.ok(probes >= 2);
+});
+
+test("the fallback is the trimmed city name", async () => {
+  const probe = async (q: string) => (q === "Boise" ? geo("Boise", "Idaho") : geo("Crouch", "Idaho"));
+  assert.equal(await resolveCityQuery("  Boise , ID", probe), "Boise");
+});
+
+test("every US state abbreviation expands to the state's full name", () => {
+  const states: Record<string, string> = {
+    AL: "alabama", AK: "alaska", AZ: "arizona", AR: "arkansas", CA: "california", CO: "colorado", CT: "connecticut",
+    DE: "delaware", DC: "district of columbia", FL: "florida", GA: "georgia", HI: "hawaii", ID: "idaho", IL: "illinois",
+    IN: "indiana", IA: "iowa", KS: "kansas", KY: "kentucky", LA: "louisiana", ME: "maine", MD: "maryland",
+    MA: "massachusetts", MI: "michigan", MN: "minnesota", MS: "mississippi", MO: "missouri", MT: "montana",
+    NE: "nebraska", NV: "nevada", NH: "new hampshire", NJ: "new jersey", NM: "new mexico", NY: "new york",
+    NC: "north carolina", ND: "north dakota", OH: "ohio", OK: "oklahoma", OR: "oregon", PA: "pennsylvania",
+    RI: "rhode island", SC: "south carolina", SD: "south dakota", TN: "tennessee", TX: "texas", UT: "utah",
+    VT: "vermont", VA: "virginia", WA: "washington", WV: "west virginia", WI: "wisconsin", WY: "wyoming",
+  };
+  assert.equal(Object.keys(states).length, 51);
+  for (const [abbr, name] of Object.entries(states)) {
+    assert.equal(parseCityQuery(`Somewhere, ${abbr}`).region, name, abbr);
+    assert.equal(parseCityQuery(`Somewhere, ${abbr.toLowerCase()}`).region, name, `${abbr} in lower case`);
+  }
+  assert.equal(parseCityQuery("Somewhere, Narnia").region, "narnia", "anything else is kept as typed");
+});

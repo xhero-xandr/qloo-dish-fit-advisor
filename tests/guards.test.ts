@@ -113,3 +113,60 @@ test("with no recommended venue there are no hours to correct against", () => {
   assert.equal(out.correctedItems, 0);
   assert.equal(out.pilotPlan[0].when, "Week 3, Mon 18:00–21:00");
 });
+
+test("every dropped item says why, in words the page can show", () => {
+  const out = run({
+    verdict: { fit: "strong", text: "Rated 4.9.", facts: ["F2"] },
+    risks: [
+      { text: "Rated 4.9 and 300 reviews.", facts: ["F2"] },
+      { text: "Invented citation.", facts: ["F99"] },
+    ],
+    recommendedVenue: { name: "Invented Bistro", why: "Great.", facts: ["F3"] },
+  });
+  assert.deepEqual(out.droppedNotes, [
+    "recommendation: not a matched venue, or cited no fact about its own venue",
+    "verdict: 4.9 is not in the facts it cites",
+    "risk: 4.9, 300 are not in the facts it cites",
+    "risk: cited no fact that exists",
+  ]);
+  assert.equal(out.droppedItems, out.droppedNotes.length);
+  assert.deepEqual(run({}).droppedNotes, [], "nothing dropped, nothing said");
+});
+
+test("a missing verdict or recommendation is simply absent, not counted as dropped", () => {
+  const out = enforceGrounding({ pilotPlan: [], menuNotes: [], risks: [] } as RawAnalysis, facts, names, windows);
+  assert.equal(out.verdict, undefined);
+  assert.equal(out.recommendedVenue, undefined);
+  assert.equal(out.droppedItems, 0);
+});
+
+test("without any lists the answer has empty lists, not placeholders", () => {
+  const out = enforceGrounding({}, facts, names, windows);
+  assert.deepEqual([out.pilotPlan, out.menuNotes, out.risks, out.droppedNotes], [[], [], [], []]);
+});
+
+test("ids that are not a list are treated as no citation", () => {
+  const out = run({ risks: [{ text: "x", facts: "F3" as never }] });
+  assert.equal(out.risks.length, 0);
+  assert.equal(out.droppedItems, 1);
+});
+
+test("a window that cannot be fixed is left as written when the venue has no usable hours", () => {
+  const never = new Map([["Fukumoto", weekWindows({ monday: [{ opens: null, closes: null, closed: true }], tuesday: [{ opens: "T10:00", closes: "T13:00", closed: false }] })!]]);
+  const out = enforceGrounding({ ...base, pilotPlan: [{ when: "Week 3, Mon 18:00–21:00", text: "Run it.", facts: [] }] }, facts, names, never);
+  assert.equal(out.pilotPlan[0].when, "Week 3, Tue 10:00–13:00", "falls back to the best daytime window there is");
+  const none = new Map([["Fukumoto", weekWindows({ sunday: [{ opens: "T00:00", closes: "T00:30", closed: false }] })!]]);
+  const out2 = enforceGrounding({ ...base, pilotPlan: [{ when: "Week 3, Mon 18:00–21:00", text: "Run it.", facts: [] }] }, facts, names, none);
+  assert.equal(out2.pilotPlan[0].when, "Week 3, Mon 18:00–21:00", "no window long enough: the original stays");
+  assert.equal(out2.correctedItems, 0);
+});
+
+test("only the text before the day name is kept as the prefix of a corrected window", () => {
+  const out = run({ pilotPlan: [{ when: "Week 3 (tasting): Mon 18:00–21:00", text: "Run it.", facts: [] }] });
+  assert.equal(out.pilotPlan[0].when, "Week 3 (tasting): Tue 17:00–20:00");
+});
+
+test("a recommendation citing only another venue's facts is dropped even when it also cites a group fact", () => {
+  const out = run({ recommendedVenue: { name: "Fukumoto", why: "Open.", facts: ["F4", "F5"] } });
+  assert.equal(out.recommendedVenue, undefined);
+});

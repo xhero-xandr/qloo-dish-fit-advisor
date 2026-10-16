@@ -46,3 +46,7 @@ next-env.d.ts
 
 # local assistant tooling
 /.claude/
+
+# mutation testing
+/.stryker-tmp/
+/reports/

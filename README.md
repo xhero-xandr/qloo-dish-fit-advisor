@@ -151,6 +151,18 @@ is `generateText` with `Output.object` and a zod schema.
   0.4-0.9 s and the analysis at 8-14 s. A model call that stalls is cut off
   at 50 s (tag choice) / 60 s (analysis) and the pipeline falls back to the
   deterministic path.
+- **The tests are themselves tested (mutation testing):** `npm run mutate`
+  (Stryker, about 90 s) changes the code in the 12 logic modules, one small
+  change at a time (a `>` to `>=`, a dropped condition, a different
+  constant), and checks that some test fails. A change no test notices means
+  the tests do not really pin that line down. First run: 67.5% of changes
+  caught, with 337 surviving. Each cluster of survivors was a real gap: the
+  tasting window's 2-hour minimum, the session-expiry boundary, how rate-limit
+  hits age out, the wording of the facts shown to the agent, retry timing.
+  After adding tests for them: 92.4% caught (1160 of 1257). What still
+  survives is mostly equivalent changes: private cache clean-up, import-time
+  environment wiring, default values that are never read. 166 tests, all
+  green.
 - **Recipes and ingredient lists map to a style, not to each ingredient:** a
   chef will paste a recipe more often than a cuisine name. The tag agent is
   told to infer the cuisine, style or venue format and anchor on that.

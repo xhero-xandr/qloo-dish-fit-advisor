@@ -78,3 +78,45 @@ test("the cache never holds more than its limit", async () => {
   for (let i = 0; i < 6; i++) await cache.getOrCompute(`k${i}`, async () => ({ n: i }));
   assert.equal(cache.size(), 3);
 });
+
+test("an entry is gone at the very instant it expires", async () => {
+  const { cache, advance } = make();
+  let runs = 0;
+  const compute = async () => ({ n: ++runs });
+  await cache.getOrCompute("k", compute);
+  advance(60_000);
+  await cache.getOrCompute("k", compute);
+  assert.equal(runs, 2);
+});
+
+test("when full, expired entries go first and a live one is kept", async () => {
+  const { cache, advance } = make({ max: 2 });
+  let runs = 0;
+  const compute = async () => ({ n: ++runs });
+  await cache.getOrCompute("old", compute);
+  advance(30_000);
+  await cache.getOrCompute("mid", compute);
+  advance(31_000);
+  await cache.getOrCompute("new", compute);
+  assert.equal(cache.size(), 2, "the expired one made room");
+  const again = await cache.getOrCompute("mid", compute);
+  assert.ok(again.cachedAt, "the live entry survived");
+  assert.equal(runs, 3);
+});
+
+test("when full and nothing has expired, the oldest entry is the one dropped", async () => {
+  const { cache } = make({ max: 2 });
+  let runs = 0;
+  const compute = async () => ({ n: ++runs });
+  await cache.getOrCompute("a", compute);
+  await cache.getOrCompute("b", compute);
+  await cache.getOrCompute("c", compute);
+  assert.equal((await cache.getOrCompute("b", compute)).cachedAt !== undefined, true);
+  assert.equal((await cache.getOrCompute("c", compute)).cachedAt !== undefined, true);
+  const a = await cache.getOrCompute("a", compute);
+  assert.equal(a.cachedAt, undefined, "a was evicted and had to be computed again");
+});
+
+test("the key is lower-cased on both sides", () => {
+  assert.equal(cacheKey("RAMEN", "TOKYO"), "ramen::tokyo");
+});

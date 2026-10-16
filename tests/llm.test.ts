@@ -66,3 +66,50 @@ test("other failures never park a model", () => {
   llm.parkIfQuotaSpent("mstring", "oops");
   for (const m of ["m503", "mplain", "mstring"]) assert.equal(llm.isModelParked(m), false, m);
 });
+
+test("the cooldown follows the wait Qloo's neighbour Gemini asks for, between ten minutes and six hours", () => {
+  const realNow = Date.now;
+  const start = realNow();
+  try {
+    llm.parkIfQuotaSpent("two-hours", rateLimit('{"error":{"details":[{"retryDelay":"7200s"}]} PerDay'));
+    Date.now = () => start + 119 * 60_000;
+    assert.equal(llm.isModelParked("two-hours"), true);
+    Date.now = () => start + 121 * 60_000;
+    assert.equal(llm.isModelParked("two-hours"), false);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("retry delays with decimals or odd spacing are read", () => {
+  const realNow = Date.now;
+  const start = realNow();
+  try {
+    llm.parkIfQuotaSpent("decimal", rateLimit('{"retryDelay" : "1800.5s"}'));
+    Date.now = () => start + 29 * 60_000;
+    assert.equal(llm.isModelParked("decimal"), true, "a 1800.5 s wait is parked past 29 minutes");
+    Date.now = () => start + 31 * 60_000;
+    assert.equal(llm.isModelParked("decimal"), false);
+  } finally {
+    Date.now = realNow;
+  }
+});
+
+test("a wait of exactly 65 seconds is a per-minute limit; 66 is not", () => {
+  llm.parkIfQuotaSpent("edge-65", rateLimit('{"retryDelay":"65s"}'));
+  llm.parkIfQuotaSpent("edge-66", rateLimit('{"retryDelay":"66s"}'));
+  assert.equal(llm.isModelParked("edge-65"), false);
+  assert.equal(llm.isModelParked("edge-66"), true);
+});
+
+test("a model whose cooldown ends right now is back in service", () => {
+  const realNow = Date.now;
+  const start = realNow();
+  try {
+    llm.parkIfQuotaSpent("edge-now", rateLimit(daily));
+    Date.now = () => start + 10 * 60_000;
+    assert.equal(llm.isModelParked("edge-now"), false, "exactly ten minutes later it is free again");
+  } finally {
+    Date.now = realNow;
+  }
+});
