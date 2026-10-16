@@ -9,6 +9,7 @@ import {
   type DemographicsResult,
   type CrossDomainEntity,
 } from "./qloo";
+import { AGE_BUCKETS, buildFacts, type Tag } from "./facts";
 import { weekWindows, type WeekWindows } from "./hours";
 import { isLlmConfigured } from "./llm";
 import {
@@ -80,16 +81,6 @@ export interface PilotPackage {
   /** ISO timestamp — present only when this result was served from the short-lived cache instead of a fresh Qloo round-trip. */
   cachedAt?: string;
 }
-
-const AGE_BUCKETS = ["24_and_younger", "25_to_29", "30_to_34", "35_to_44", "45_to_54", "55_and_older"] as const;
-const AGE_LABEL: Record<string, string> = {
-  "24_and_younger": "24 and younger",
-  "25_to_29": "25–29",
-  "30_to_34": "30–34",
-  "35_to_44": "35–44",
-  "45_to_54": "45–54",
-  "55_and_older": "55+",
-};
 
 /** Average per-venue affinity scores into one aggregate audience profile for the hero chart. */
 function aggregateDemographics(venues: VenueCandidate[]): DemographicsResult | undefined {
@@ -329,7 +320,6 @@ async function computeAndCache(key: string, concept: string, city: string): Prom
   return result;
 }
 
-type Tag = { id: string; name: string; type: string };
 
 /** Baseline tag choice: stopword keywords + type-weighted ranking. Also the floor the agent must beat. */
 async function resolveTagDeterministically(
@@ -367,83 +357,6 @@ async function resolveTagDeterministically(
     }
   }
   return { primaryTag: rankedTags[0], places: [], triedTagNames };
-}
-
-function signed(n: number): string {
-  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}`;
-}
-
-function describeDemographicsFact(d: DemographicsResult): string {
-  const ages = AGE_BUCKETS.filter((b) => typeof d.age?.[b] === "number")
-    .map((b) => `${AGE_LABEL[b]} ${signed(d.age[b])}`)
-    .join(", ");
-  return `age affinity ${ages}; gender affinity male ${signed(d.gender?.male ?? 0)}, female ${signed(d.gender?.female ?? 0)} (Qloo affinity vs. general population)`;
-}
-
-/** Number every Qloo-derived datum so the analysis step can cite it and code can verify the citations. */
-function buildFacts(input: {
-  city: string;
-  primaryTag: Tag;
-  secondary: AgentTagDecision["secondary"];
-  venues: VenueCandidate[];
-  aggregate?: DemographicsResult;
-  regionInsights: RegionInsight[];
-  culturalAffinity?: CulturalAffinity;
-}): Fact[] {
-  const facts: Fact[] = [];
-  const add = (text: string, venue?: string) => facts.push({ id: `F${facts.length + 1}`, text, venue });
-  const n = input.venues.length;
-
-  add(`Venues were found via the Qloo tag "${input.primaryTag.name}" (${input.primaryTag.type.replace("urn:tag:", "")}); ${n} operating venue(s) matched.`);
-  for (const v of input.venues) {
-    const price = v.priceLevel ? "$".repeat(v.priceLevel) : "n/a";
-    add(`Venue "${v.name}": rating ${v.rating?.toFixed(1) ?? "n/a"}, price level ${price}${v.address ? `, address ${v.address}` : ""}.`, v.name);
-    if (v.hours) add(`Venue "${v.name}" opening hours: ${v.hours}.`, v.name);
-    if (v.dietaryOptions.length > 0) add(`Venue "${v.name}" dietary options listed by Qloo: ${v.dietaryOptions.join(", ")}.`, v.name);
-    if (v.vibeTags.length > 0) add(`Venue "${v.name}" Qloo tags: ${v.vibeTags.join(", ")}.`, v.name);
-    if (v.reviewKeywords.length > 0) {
-      add(
-        `Venue "${v.name}" own most-mentioned review keywords: ${v.reviewKeywords.map((k) => `${k.keyword} (${k.mentions})`).join(", ")}.`,
-        v.name
-      );
-    }
-    if (v.demographics) add(`Venue "${v.name}" audience: ${describeDemographicsFact(v.demographics)}.`, v.name);
-  }
-  if (input.aggregate) add(`Across all ${n} matched venues combined, average audience ${describeDemographicsFact(input.aggregate)}.`);
-  if (input.regionInsights.length > 0) {
-    add(
-      `Across all ${n} matched venues combined, most-mentioned review keywords: ${input.regionInsights
-        .slice(0, 10)
-        .map((r) => `${r.keyword} (${r.mentions})`)
-        .join(", ")}.`
-    );
-  }
-  const ca = input.culturalAffinity;
-  if (ca) {
-    const groups: [string, CulturalSignalItem[]][] = [
-      ["brands", ca.brands],
-      ["TV shows", ca.tvShows],
-      ["music artists", ca.artists],
-      ["podcasts", ca.podcasts],
-    ];
-    for (const [label, items] of groups) {
-      if (items.length > 0) {
-        add(`The audience of these matched venues also over-indexes on these ${label}: ${items.map((i) => i.name).join(", ")}.`);
-      }
-    }
-  }
-  for (const s of input.secondary) {
-    if (s.venueCount !== undefined) {
-      add(
-        `Secondary concept signal "${s.name}": ${s.venueCount} venue(s) in ${input.city} carry this Qloo tag${
-          s.venueNames && s.venueNames.length > 0 ? `, e.g. ${s.venueNames.join(", ")}` : ""
-        }.`
-      );
-    } else {
-      add(`Part of the concept also maps to the Qloo tag "${s.name}" (venues for it were not checked).`);
-    }
-  }
-  return facts;
 }
 
 function shortError(error: unknown): string {

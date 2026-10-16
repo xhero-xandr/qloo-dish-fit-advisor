@@ -12,7 +12,7 @@ cannot be done from the code alone.
 | 3 | Keep `.claude/` and other local tooling out of the public repository | done |
 | 4 | Unit tests for the parts that decide correctness without a network: opening-hours checks, the session signature, the rate limiter | done |
 | 5 | Code-side check that numbers inside a cited claim appear in the cited facts (verdict, recommendation, risks). Venue names are still unchecked | done (numbers) |
-| 6 | Split `lib/pilot-package.ts` (fact building, agent call, response shaping) | planned |
+| 6 | Split `lib/pilot-package.ts`: fact building moved to `lib/facts.ts` with tests; the Qloo fetching and response shaping remain in `pilot-package.ts` | partly done |
 
 ## After the hackathon
 
