@@ -274,7 +274,8 @@ Every analysis spends shared Qloo and Gemini quota, so `/api/analyze` can sit
 behind a single demo account (`lib/auth.ts`). Set `DEMO_PASSWORD` (and
 optionally `DEMO_USER` or `DEMO_USERNAME`, default `demo`) to turn it on; without it the app is
 open, which is what local development uses. The login page shows the demo
-account with a "fill in" button (hide it with `SHOW_DEMO_CREDENTIALS=0`), and
+account with a one-click "Continue with the demo account" button (hide both the button and
+the credentials with `SHOW_DEMO_CREDENTIALS=0`, which leaves a plain username/password form), and
 the same credentials go in the Devpost testing instructions.
 
 - **Session:** a signed, HttpOnly cookie valid for 12 hours, no database.

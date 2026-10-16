@@ -66,14 +66,6 @@ export function LoginPanel({
             Demo login: <span className="font-mono">{demo.username}</span> /{" "}
             <span className="font-mono">{demo.password}</span>
           </p>
-          {error && (
-            <p
-              role="alert"
-              className="mt-3 text-center text-sm text-red-600 dark:text-red-400"
-            >
-              {error}
-            </p>
-          )}
         </div>
       )}
 
@@ -100,11 +92,6 @@ export function LoginPanel({
               required
             />
           </label>
-          {error && (
-            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-              {error}
-            </p>
-          )}
           <button
             type="submit"
             disabled={busy}
@@ -113,6 +100,14 @@ export function LoginPanel({
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
+      )}
+      {error && (
+        <p
+          role="alert"
+          className="mt-3 text-center text-sm text-red-600 dark:text-red-400"
+        >
+          {error}
+        </p>
       )}
     </section>
   );
