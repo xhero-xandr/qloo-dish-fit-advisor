@@ -30,6 +30,8 @@ export interface CheckedAnalysis {
   droppedItems: number;
   /** Tasting windows replaced because they fell outside the venue's real hours. */
   correctedItems: number;
+  /** Why each dropped item was dropped, e.g. "verdict: 4.9 is not in the facts it cites". */
+  droppedNotes: string[];
 }
 
 export function enforceGrounding(
@@ -43,26 +45,39 @@ export function enforceGrounding(
   const factVenue = new Map(facts.map((f) => [f.id, f.venue]));
 
   let dropped = 0;
+  const droppedNotes: string[] = [];
   const cite = (ids: unknown): string[] =>
     Array.isArray(ids) ? Array.from(new Set(ids.map(String).filter((id) => factIds.has(id)))) : [];
 
   // `claim` is the sentence that states something about the data. Its numbers must appear in the facts
   // it cites. Menu notes and plan steps are suggestions ("3-5 dishes", "15-25 guests"), not claims
   // about the data, so they are only held to the citation rule.
-  function keep<T extends { facts: string[] }>(item: T | undefined, claim?: (i: T) => string): T | undefined {
+  function keep<T extends { facts: string[]; text?: string }>(
+    item: T | undefined,
+    label: string,
+    claim?: (i: T) => string
+  ): T | undefined {
     if (!item) return undefined;
     const facts = cite(item.facts);
-    const unbacked = claim && unsupportedNumbers(claim(item), facts.map((id) => factText.get(id) ?? "")).length > 0;
-    if (facts.length === 0 || unbacked) {
+    const missing = claim ? unsupportedNumbers(claim(item), facts.map((id) => factText.get(id) ?? "")) : [];
+    if (facts.length === 0 || missing.length > 0) {
       dropped++;
+      droppedNotes.push(
+        facts.length === 0
+          ? `${label}: cited no fact that exists`
+          : `${label}: ${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} not in the facts it cites`
+      );
       return undefined;
     }
     return { ...item, facts };
   }
-  const keepAll = <T extends { facts: string[] }>(items: T[] | undefined, claim?: (i: T) => string): T[] =>
-    (items ?? []).map((i) => keep(i, claim)).filter((i): i is T => Boolean(i));
+  const keepAll = <T extends { facts: string[]; text?: string }>(
+    items: T[] | undefined,
+    label: string,
+    claim?: (i: T) => string
+  ): T[] => (items ?? []).map((i) => keep(i, label, claim)).filter((i): i is T => Boolean(i));
 
-  let recommendedVenue = keep(value.recommendedVenue, (r) => r.why);
+  let recommendedVenue = keep(value.recommendedVenue, "recommendation", (r) => r.why);
   if (recommendedVenue) {
     const match = venueNames.find((n) => n.toLowerCase() === recommendedVenue!.name.trim().toLowerCase());
     // The recommendation may cite general facts, but not another venue's facts, and it
@@ -72,11 +87,12 @@ export function enforceGrounding(
       recommendedVenue = { ...recommendedVenue, name: match, facts: ownFacts };
     } else {
       dropped++;
+      droppedNotes.push("recommendation: not a matched venue, or cited no fact about its own venue");
       recommendedVenue = undefined;
     }
   }
 
-  const verdict = keep(value.verdict, (v) => v.text);
+  const verdict = keep(value.verdict, "verdict", (v) => v.text);
 
   // The tasting night must fit the venue's real hours. The agent's wording is checked, and a
   // window that is on a closed day, outside the hours, or before the evening (when the venue
@@ -99,9 +115,10 @@ export function enforceGrounding(
     verdict,
     recommendedVenue,
     pilotPlan,
-    menuNotes: keepAll(value.menuNotes),
-    risks: keepAll(value.risks, (r) => r.text),
+    menuNotes: keepAll(value.menuNotes, "menu note"),
+    risks: keepAll(value.risks, "risk", (r) => r.text),
     droppedItems: dropped,
     correctedItems: corrected,
+    droppedNotes,
   };
 }

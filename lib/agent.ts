@@ -58,6 +58,8 @@ export interface AgentAnalysis {
   menuNotes: CitedItem[];
   risks: CitedItem[];
   droppedItems: number;
+  /** Why each dropped item was dropped. */
+  droppedNotes: string[];
   /** Tasting-night windows the code replaced because they fell outside the venue's hours or before the evening. */
   correctedItems: number;
 }

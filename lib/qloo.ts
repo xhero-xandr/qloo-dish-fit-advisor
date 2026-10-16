@@ -179,3 +179,13 @@ export async function recommendByEntities(
   });
   return data.results?.entities ?? [];
 }
+
+/** Where Qloo places a city query: the geocode of the first restaurant it returns there. */
+export async function probeLocation(query: string): Promise<QlooPlace["properties"]["geocode"] | undefined> {
+  try {
+    const found = await findPlacesByTags(["urn:tag:genre:place:restaurant"], query, 1);
+    return found[0]?.properties?.geocode;
+  } catch {
+    return undefined;
+  }
+}

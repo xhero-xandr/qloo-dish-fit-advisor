@@ -133,6 +133,6 @@ test("locationMismatch is silent when Qloo placed the city where it was typed", 
 test("locationMismatch warns when Qloo placed the query somewhere else", () => {
   const w = locationMismatch("Portland, ME", where("Cape Elizabeth", "Maine", "United States"));
   assert.match(w ?? "", /Cape Elizabeth, Maine, United States/);
-  assert.match(w ?? "", /add a state or country/);
+  assert.match(w ?? "", /bare city name/);
   assert.equal(locationMismatch("Portland", undefined), undefined, "nothing to compare without a place");
 });

@@ -2,6 +2,7 @@
 // state: each is tested on its own (tests/venues.test.ts).
 
 import { AGE_BUCKETS } from "./facts.ts";
+import { geoMatches } from "./location.ts";
 import type { CrossDomainEntity, DemographicsResult, QlooPlace } from "./qloo.ts";
 import type { CulturalSignalItem, RegionInsight, VenueCandidate } from "./pilot-package.ts";
 
@@ -179,19 +180,14 @@ export function conceptMatchesTag(concept: string, tagNames: string[]): boolean 
   );
 }
 
-/** Alternate names Qloo files a place under that a user would not type. */
-const LOCATION_ALIASES: Record<string, string[]> = { washington: ["district of columbia"] };
-
 /**
  * A warning when Qloo placed the city query somewhere that does not contain what was typed (e.g.
  * "Portland, ME" resolved to the suburb Cape Elizabeth). Short abbreviations ("NYC", "LA") are not checked.
  */
 export function locationMismatch(query: string, place?: QlooPlace): string | undefined {
   const geo = place?.properties?.geocode;
-  const first = query.split(",")[0].trim().toLowerCase();
-  if (!geo || first.length <= 3) return undefined;
-  const where = [geo.city, geo.metro, geo.admin1_region, geo.country].filter(Boolean).join(" ").toLowerCase();
-  if (where.includes(first) || (LOCATION_ALIASES[first] ?? []).some((a) => where.includes(a))) return undefined;
+  if (!geo || query.split(",")[0].trim().length <= 3) return undefined;
+  if (geoMatches(query, geo)) return undefined;
   const named = describeResolvedLocation(place);
-  return `Qloo placed "${query}" at ${named ?? "a different area"}. If that is not the area you meant, add a state or country (e.g. "Portland, Maine, USA").`;
+  return `Qloo placed "${query}" at ${named ?? "a different area"}. If that is not the area you meant, try the bare city name or add a country.`;
 }

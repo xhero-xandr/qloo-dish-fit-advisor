@@ -1,6 +1,7 @@
 import {
   findTags,
   findPlacesByTags,
+  probeLocation,
   audienceDemographics,
   recommendByEntities,
   type QlooPlace,
@@ -9,6 +10,7 @@ import {
 } from "./qloo";
 import { buildFacts, type Tag } from "./facts";
 import { cacheKey, createResultCache } from "./result-cache";
+import { resolveCityQuery } from "./location";
 import { isRateLimitError, MIN_PILOT_VENUES, resolveTagDeterministically } from "./tags";
 import {
   aggregateDemographics,
@@ -144,6 +146,8 @@ function shortError(error: unknown): string {
 
 async function buildPilotPackageUncached(concept: string, city: string): Promise<PilotPackage> {
   const limitations: string[] = [];
+  // What is sent to Qloo; the city as typed is still what the page and the letter show.
+  const qlooCity = await resolveCityQuery(city, probeLocation);
   const agentEnabled = isLlmConfigured();
   const agentNotes: string[] = [];
 
@@ -152,7 +156,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
   const findVenues = (tagId: string): Promise<QlooPlace[]> => {
     let lookup = venueLookups.get(tagId);
     if (!lookup) {
-      lookup = findPlacesByTags([tagId], city, 8).then((found) => found.filter(isOperating));
+      lookup = findPlacesByTags([tagId], qlooCity, 8).then((found) => found.filter(isOperating));
       venueLookups.set(tagId, lookup);
       lookup.catch(() => venueLookups.delete(tagId));
     }
@@ -261,7 +265,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
   const vibeWords = Array.from(new Set(venues.flatMap((v) => v.vibeTags))).slice(0, 10);
   const regionInsights = aggregateRegionInsights(topPlaces);
   const culturalAffinity =
-    topPlaces.length > 0 ? await fetchCulturalAffinity(topPlaces.map((p) => p.entity_id), city) : undefined;
+    topPlaces.length > 0 ? await fetchCulturalAffinity(topPlaces.map((p) => p.entity_id), qlooCity) : undefined;
 
   let agent: AgentOutput | undefined;
   if (agentEnabled) {
