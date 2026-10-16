@@ -158,3 +158,40 @@ export function describeResolvedLocation(place?: QlooPlace): string | undefined 
   const region = geo.admin1_region && geo.admin1_region !== geo.city ? geo.admin1_region : undefined;
   return [geo.city, region, geo.country].filter(Boolean).join(", ");
 }
+
+const WORD = /[\p{L}\p{N}]+/gu;
+
+function words(text: string): string[] {
+  return (text.toLowerCase().match(WORD) ?? []).filter((w) => w.length >= 3);
+}
+
+/**
+ * Whether the tag Qloo matched has anything to do with the words the user typed. Qloo's semantic
+ * tag search always returns something, so gibberish ("asdfgh qwerty") comes back as "Tacos". A
+ * shared word, or one that is a stem of the other ("taco" / "tacos"), counts. Concepts with no
+ * Latin letters (e.g. Russian) cannot be compared with English tag names, so they are not flagged.
+ */
+export function conceptMatchesTag(concept: string, tagNames: string[]): boolean {
+  if (!/[a-z]/i.test(concept)) return true;
+  const tagWords = tagNames.flatMap(words);
+  return words(concept).some((c) =>
+    tagWords.some((t) => c === t || (Math.min(c.length, t.length) >= 4 && (c.startsWith(t) || t.startsWith(c))))
+  );
+}
+
+/** Alternate names Qloo files a place under that a user would not type. */
+const LOCATION_ALIASES: Record<string, string[]> = { washington: ["district of columbia"] };
+
+/**
+ * A warning when Qloo placed the city query somewhere that does not contain what was typed (e.g.
+ * "Portland, ME" resolved to the suburb Cape Elizabeth). Short abbreviations ("NYC", "LA") are not checked.
+ */
+export function locationMismatch(query: string, place?: QlooPlace): string | undefined {
+  const geo = place?.properties?.geocode;
+  const first = query.split(",")[0].trim().toLowerCase();
+  if (!geo || first.length <= 3) return undefined;
+  const where = [geo.city, geo.metro, geo.admin1_region, geo.country].filter(Boolean).join(" ").toLowerCase();
+  if (where.includes(first) || (LOCATION_ALIASES[first] ?? []).some((a) => where.includes(a))) return undefined;
+  const named = describeResolvedLocation(place);
+  return `Qloo placed "${query}" at ${named ?? "a different area"}. If that is not the area you meant, add a state or country (e.g. "Portland, Maine, USA").`;
+}

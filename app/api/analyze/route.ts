@@ -1,8 +1,7 @@
 import { clientKey, isAuthEnabled, rateLimit, requestHasSession } from "@/lib/auth";
+import { validateInput } from "@/lib/input";
 import { buildPilotPackage, ConceptNotFoundError } from "@/lib/pilot-package";
 
-const MAX_CONCEPT_LENGTH = 200;
-const MAX_CITY_LENGTH = 100;
 // Per client: each analysis spends shared Qloo and Gemini quota. Comparing several cities
 // sends one request per city, so this leaves room for a few comparisons an hour.
 const ANALYSES_PER_HOUR = 30;
@@ -29,15 +28,8 @@ export async function POST(request: Request) {
   const concept = typeof body.concept === "string" ? body.concept.trim() : "";
   const city = typeof body.city === "string" ? body.city.trim() : "";
 
-  if (!concept || !city) {
-    return Response.json({ error: "Both 'concept' and 'city' are required." }, { status: 400 });
-  }
-  if (concept.length > MAX_CONCEPT_LENGTH || city.length > MAX_CITY_LENGTH) {
-    return Response.json(
-      { error: `Keep the concept under ${MAX_CONCEPT_LENGTH} characters and the city under ${MAX_CITY_LENGTH}.` },
-      { status: 400 }
-    );
-  }
+  const problem = validateInput(concept, city);
+  if (problem) return Response.json({ error: problem }, { status: 400 });
 
   try {
     const result = await buildPilotPackage(concept, city);

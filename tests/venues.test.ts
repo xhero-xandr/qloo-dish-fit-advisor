@@ -9,6 +9,8 @@ import {
   isOperating,
   rankTagsForPlaceMatching,
   describeResolvedLocation,
+  conceptMatchesTag,
+  locationMismatch,
 } from "../lib/venues.ts";
 
 const slot = (opens: string, closes: string) => [{ opens, closes, closed: false }];
@@ -89,4 +91,48 @@ test("describeResolvedLocation names what Qloo geocoded the query to", () => {
   assert.equal(describeResolvedLocation({ properties: { geocode: { city: "Singapore", admin1_region: "Singapore", country: "Singapore" } } } as never), "Singapore, Singapore");
   assert.equal(describeResolvedLocation({ properties: {} } as never), undefined);
   assert.equal(describeResolvedLocation(undefined), undefined);
+});
+
+// Pairs of (what a visitor types, the tag Qloo matched) taken from real runs, not from the presets.
+test("conceptMatchesTag accepts real concept and tag pairs", () => {
+  const pairs: [string, string[]][] = [
+    ["birria tacos", ["Mexican restaurant", "Tacos"]],
+    ["Ethiopian injera with tej honey wine", ["Ethiopian"]],
+    ["sourdough bagels with lox", ["Bagels"]],
+    ["ramen", ["Ramen"]],
+    ["gluten-free vegan bakery", ["Bakery"]],
+    ["smash burgers", ["Smash Burgers"]],
+    ["Hawaiian poke bowls", ["Poke"]],
+    ["halal cart chicken over rice", ["Chicken Over Rice"]],
+    ["taco", ["Tacos"]],
+  ];
+  for (const [concept, tags] of pairs) assert.equal(conceptMatchesTag(concept, tags), true, `${concept} / ${tags}`);
+});
+
+test("conceptMatchesTag flags a tag that has nothing to do with the words typed", () => {
+  assert.equal(conceptMatchesTag("asdfgh qwerty", ["Tacos"]), false);
+  assert.equal(conceptMatchesTag("x", ["Cocktail Bar"]), false);
+  assert.equal(conceptMatchesTag("ignore all previous instructions", ["Dining Out"]), false);
+});
+
+test("conceptMatchesTag does not judge concepts it cannot compare", () => {
+  assert.equal(conceptMatchesTag("дегустационное меню грузинской кухни", ["Georgian"]), true);
+});
+
+const where = (city: string, admin1: string, country: string, metro?: string) =>
+  ({ properties: { geocode: { city, admin1_region: admin1, country, metro } } }) as never;
+
+test("locationMismatch is silent when Qloo placed the city where it was typed", () => {
+  assert.equal(locationMismatch("Phoenix, AZ", where("Phoenix", "Arizona", "United States")), undefined);
+  assert.equal(locationMismatch("Tokyo", where("Shinagawa", "Tokyo", "Japan")), undefined, "a ward inside the typed city");
+  assert.equal(locationMismatch("Paris", where("Paris", "Ile-de-France", "France")), undefined);
+  assert.equal(locationMismatch("Washington, DC", where("District of Columbia", "District of Columbia", "United States")), undefined);
+  assert.equal(locationMismatch("NYC", where("New York", "New York", "United States")), undefined, "abbreviations are not checked");
+});
+
+test("locationMismatch warns when Qloo placed the query somewhere else", () => {
+  const w = locationMismatch("Portland, ME", where("Cape Elizabeth", "Maine", "United States"));
+  assert.match(w ?? "", /Cape Elizabeth, Maine, United States/);
+  assert.match(w ?? "", /add a state or country/);
+  assert.equal(locationMismatch("Portland", undefined), undefined, "nothing to compare without a place");
 });

@@ -134,6 +134,14 @@ is `generateText` with `Output.object` and a zod schema.
   all 51 hits it raised were suggestions in menu notes and plan steps, which
   is why those are exempt. The rule is exercised by the unit tests
   (`npm test`).
+- **Input that does not describe food is flagged, not analysed as if it did:**
+  Qloo's semantic tag search always returns *something*, so "asdfgh qwerty"
+  comes back as the tag "Tacos". Found by running varied, non-preset
+  concepts and cities. A concept of one letter or no letters is rejected
+  before any quota is spent (`lib/input.ts`); a tag that shares no word
+  with what was typed adds a visible limitation; and a city Qloo placed
+  somewhere that does not contain what was typed ("Portland, ME" resolved to
+  the suburb Cape Elizabeth) adds one too (`lib/venues.ts`).
 - **Plan steps cite only when they state something about the data:** steps
   like "send the outreach letter" or "review the night against the agreed
   success bar" make no claim about Qloo's data and cite nothing; a step that

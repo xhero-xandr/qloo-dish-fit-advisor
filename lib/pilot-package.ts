@@ -13,11 +13,13 @@ import { isRateLimitError, MIN_PILOT_VENUES, resolveTagDeterministically } from 
 import {
   aggregateDemographics,
   aggregateRegionInsights,
+  conceptMatchesTag,
   describeResolvedLocation,
   extractDietaryOptions,
   DIETARY_TAG_TYPE,
   formatHours,
   isOperating,
+  locationMismatch,
   toCulturalSignalItems,
 } from "./venues";
 import { weekWindows, type WeekWindows } from "./hours";
@@ -305,6 +307,15 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     "Week 3: run the tasting night, collect questionnaires and sales/portion data.",
     "Week 4: review results — decide whether to go to a permanent menu, revise the concept, or switch venue/audience.",
   ];
+
+  const locationWarning = locationMismatch(city, topPlaces[0]);
+  if (locationWarning) limitations.push(locationWarning);
+  const tagNames = [primaryTag.name, ...(agent?.tagDecision?.secondary ?? []).map((s) => s.name)];
+  if (places.length > 0 && !conceptMatchesTag(concept, tagNames)) {
+    limitations.push(
+      `Qloo matched "${concept}" to the tag "${primaryTag.name}", which shares no words with it. If that is not what you meant, rephrase the concept (a cuisine or dish type works best).`
+    );
+  }
 
   const bestVenue = venues.find((v) => v.name === agent?.analysis?.recommendedVenue?.name) ?? venues[0];
   const ownerLetter = bestVenue

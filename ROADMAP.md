@@ -13,6 +13,7 @@ cannot be done from the code alone.
 | 4 | Unit tests for the parts that decide correctness without a network: opening-hours checks, the session signature, the rate limiter | done |
 | 5 | Code-side check that numbers inside a cited claim appear in the cited facts (verdict, recommendation, risks). Venue names are still unchecked | done (numbers) |
 | 4b | The checks applied to the model's answer (citations, own-venue rule, numbers, tasting window) live in `lib/guards.ts` with 11 tests | done |
+| 4c | Varied, non-preset input (other cuisines, ambiguous and non-US cities, another language, gibberish, an injection attempt) run live; the problems found are fixed and tested | done |
 | 6 | Split `lib/pilot-package.ts` into `facts.ts`, `venues.ts` (data shaping), `tags.ts` (baseline tag choice) and `result-cache.ts`, each with tests; `pilot-package.ts` keeps only the orchestration | done |
 
 ## After the hackathon
