@@ -25,7 +25,7 @@ export function Citations({ ids, facts }: { ids: string[]; facts: Map<string, Fa
         ))}
       </button>
       {open && (
-        <span className="mt-1.5 block rounded-lg border border-sky-100 bg-sky-50/50 px-2.5 py-1.5 text-[11px] leading-relaxed text-zinc-600 dark:border-sky-900 dark:bg-sky-950/40 dark:text-zinc-300">
+        <span className="mt-1.5 block rounded-lg border border-sky-100 bg-sky-50/50 px-2.5 py-1.5 text-[11px] leading-relaxed text-slate-600 dark:border-sky-900 dark:bg-sky-950/40 dark:text-slate-300">
           {ids.map((id) => (
             <span key={id} className="block">
               <span className="font-mono text-sky-700 dark:text-sky-300">{id}</span> {facts.get(id)?.text}

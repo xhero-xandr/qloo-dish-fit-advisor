@@ -54,7 +54,7 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
   return (
     <Section title="City comparison" subtitle={`${results.length} cities analyzed for the same concept`}>
       {usable.length > 1 && (
-        <p className="mb-3 text-xs text-zinc-400">
+        <p className="mb-3 text-xs text-slate-400">
           &quot;Best fit&quot; ranks by matching venues found (weighted 2× each) plus average rating — more
           real candidate venues counts more than a slightly higher rating. This is our ranking heuristic
           on top of Qloo&apos;s data, not a Qloo score itself.
@@ -72,9 +72,9 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
           .
         </p>
       )}
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
         <table className="w-full min-w-[560px] text-left text-sm">
-          <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
             <tr>
               <th className="px-4 py-2.5 font-medium">City</th>
               <th className="px-4 py-2.5 font-medium">Venues found</th>
@@ -83,7 +83,7 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
               <th className="px-4 py-2.5 font-medium">Gender skew</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {stats.map((s) =>
               s.error ? (
                 <tr key={s.city}>

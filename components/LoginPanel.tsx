@@ -43,9 +43,9 @@ export function LoginPanel({
   }
 
   return (
-    <section className="no-print w-full rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-lg shadow-orange-900/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+    <section className="no-print w-full rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-lg shadow-accent-900/5 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
       <h2 className="text-lg font-semibold">Sign in to run an analysis</h2>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-slate-500">
         Each analysis spends shared Qloo and Gemini quota, so it sits behind a
         demo account.
       </p>
@@ -56,11 +56,11 @@ export function LoginPanel({
             type="button"
             disabled={busy}
             onClick={() => signIn(demo.username, demo.password)}
-            className="w-full rounded-xl bg-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+            className="w-full rounded-xl bg-accent-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-700 disabled:opacity-50"
           >
             {busy ? "Signing in…" : "Continue with the demo account"}
           </button>
-          <p className="mt-2 text-center text-xs text-zinc-500">
+          <p className="mt-2 text-center text-xs text-slate-500">
             Demo login: <span className="font-mono">{demo.username}</span> /{" "}
             <span className="font-mono">{demo.password}</span>
           </p>
@@ -69,7 +69,7 @@ export function LoginPanel({
 
       {!demo && (
         <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
-          <label className="text-xs font-medium text-zinc-500">
+          <label className="text-xs font-medium text-slate-500">
             Username
             <input
               className={`${inputClass} mt-1`}
@@ -79,7 +79,7 @@ export function LoginPanel({
               required
             />
           </label>
-          <label className="text-xs font-medium text-zinc-500">
+          <label className="text-xs font-medium text-slate-500">
             Password
             <input
               className={`${inputClass} mt-1`}
@@ -93,7 +93,7 @@ export function LoginPanel({
           <button
             type="submit"
             disabled={busy}
-            className="rounded-xl bg-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+            className="rounded-xl bg-accent-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-700 disabled:opacity-50"
           >
             {busy ? "Signing in…" : "Sign in"}
           </button>

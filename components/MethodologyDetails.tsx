@@ -1,12 +1,12 @@
-const CODE = "rounded bg-zinc-200/70 px-1 py-0.5 text-[11px] dark:bg-zinc-800";
+const CODE = "rounded bg-slate-200/70 px-1 py-0.5 text-[11px] dark:bg-slate-800";
 
 export function MethodologyDetails() {
   return (
-    <details className="mt-5 max-w-2xl rounded-xl border border-zinc-200 bg-white/60 text-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/40">
-      <summary className="cursor-pointer select-none px-4 py-2.5 font-medium text-zinc-600 dark:text-zinc-300">
+    <details className="mt-5 max-w-2xl rounded-xl border border-slate-200 bg-white/60 text-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/40">
+      <summary className="cursor-pointer select-none px-4 py-2.5 font-medium text-slate-600 dark:text-slate-300">
         How this works &amp; where the data comes from
       </summary>
-      <div className="border-t border-zinc-200 px-4 py-3 text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+      <div className="border-t border-slate-200 px-4 py-3 text-slate-600 dark:border-slate-800 dark:text-slate-400">
         <ol className="list-decimal space-y-1.5 pl-4">
           <li>
             An AI agent maps your concept to Qloo taste tags by calling Qloo itself (<code className={CODE}>GET /v2/tags</code>), and
@@ -28,13 +28,13 @@ export function MethodologyDetails() {
             keyword matching and a template plan, and says so.
           </li>
         </ol>
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-slate-500">
           Full methodology, known limitations, and source code:{" "}
           <a
             href="https://github.com/xhero-xandr/qloo-dish-fit-advisor"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
+            className="underline underline-offset-2 hover:text-slate-900 dark:hover:text-slate-100"
           >
             GitHub repo
           </a>
