@@ -16,6 +16,19 @@ cannot be done from the code alone.
 
 ## After the hackathon
 
+Qloo endpoints and parameters we do not use yet (from the public API reference), each of which needs the
+five-concept comparison before it ships:
+
+- **Heatmap** (`filter.type=urn:heatmap`, one tag or entity as the signal): affinity per grid point, so a verdict
+  could name the part of the city where the concept fits best.
+- **Analysis Compare** (`/v2/analysis/compare`): Qloo's own comparison of two entity groups, as a possible
+  replacement for the home-made `fitScore` in the city comparison.
+- **Trending** (`/v2/trending`): weekly popularity percentile and velocity for an entity.
+- **Place ranking:** `sort_by=quality` / `bias.quality`, `filter.hours` (open on a given weekday), and the external
+  filters (Resy, Michelin, Tripadvisor ratings) as extra facts.
+- **Taste Analysis** (`filter.type=urn:tag` with a signal): tags that describe an audience or location.
+- `feature.semantic_search` on `/v2/tags`, which we use, is marked Beta by Qloo; keep the deterministic tag fallback.
+
 - An MCP server exposing the analysis, so other agents can call it.
 - Persist caches and rate limits outside process memory.
 - A fixed evaluation set of five concepts, run against any prompt or data change, so verdict
