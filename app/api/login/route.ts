@@ -1,4 +1,4 @@
-import { clientKey, createSessionToken, credentialsValid, isAuthEnabled, isHttps, rateLimit, SESSION_COOKIE, SESSION_TTL_SECONDS } from "@/lib/auth";
+import { clientKey, createSessionToken, credentialsValid, isAuthEnabled, isHttps, rateLimit, SESSION_COOKIE, SESSION_TTL_SECONDS } from "../../../lib/auth.ts";
 
 const MAX_ATTEMPTS = 10;
 const ATTEMPT_WINDOW_MS = 10 * 60_000;

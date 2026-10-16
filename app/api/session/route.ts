@@ -1,4 +1,4 @@
-import { demoHint, isAuthEnabled, requestHasSession } from "@/lib/auth";
+import { demoHint, isAuthEnabled, requestHasSession } from "../../../lib/auth.ts";
 
 export async function GET(request: Request) {
   const authRequired = isAuthEnabled();
