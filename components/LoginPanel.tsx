@@ -48,7 +48,8 @@ export function LoginPanel({
     <section className="no-print w-full rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-lg shadow-orange-900/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
       <h2 className="text-lg font-semibold">Sign in to run an analysis</h2>
       <p className="mt-1 text-sm text-zinc-500">
-        Each analysis spends shared Qloo and Gemini quota, so it sits behind a demo account.
+        Each analysis spends shared Qloo and Gemini quota, so it sits behind a
+        demo account.
       </p>
 
       {demo && (
@@ -62,51 +63,57 @@ export function LoginPanel({
             {busy ? "Signing in…" : "Continue with the demo account"}
           </button>
           <p className="mt-2 text-center text-xs text-zinc-500">
-            Demo login: <span className="font-mono">{demo.username}</span> / <span className="font-mono">{demo.password}</span>
+            Demo login: <span className="font-mono">{demo.username}</span> /{" "}
+            <span className="font-mono">{demo.password}</span>
           </p>
-          <p className="mt-4 text-center text-xs text-zinc-400">or sign in manually</p>
+          {error && (
+            <p
+              role="alert"
+              className="mt-3 text-center text-sm text-red-600 dark:text-red-400"
+            >
+              {error}
+            </p>
+          )}
         </div>
       )}
 
-      <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
-        <label className="text-xs font-medium text-zinc-500">
-          Username
-          <input
-            className={`${input} mt-1`}
-            value={username}
-            autoComplete="username"
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-        </label>
-        <label className="text-xs font-medium text-zinc-500">
-          Password
-          <input
-            className={`${input} mt-1`}
-            type="password"
-            value={password}
-            autoComplete="current-password"
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        {error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {error}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={busy}
-          className={`rounded-xl px-6 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50 ${
-            demo
-              ? "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
-              : "bg-orange-600 text-white hover:bg-orange-700"
-          }`}
-        >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+      {!demo && (
+        <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+          <label className="text-xs font-medium text-zinc-500">
+            Username
+            <input
+              className={`${input} mt-1`}
+              value={username}
+              autoComplete="username"
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </label>
+          <label className="text-xs font-medium text-zinc-500">
+            Password
+            <input
+              className={`${input} mt-1`}
+              type="password"
+              value={password}
+              autoComplete="current-password"
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-xl bg-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-50"
+          >
+            {busy ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+      )}
     </section>
   );
 }
