@@ -126,7 +126,7 @@ export function AnalyzerForm({ concept, setConcept, cities, setCities, loading, 
           </div>
         </div>
 
-        <Button type="submit" disabled={loading} className="self-start">
+        <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Analyzing…" : cities.length > 1 ? `Compare ${cities.length} cities` : "Analyze"}
         </Button>
       </form>

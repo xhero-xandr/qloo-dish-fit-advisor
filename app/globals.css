@@ -1,29 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbfaf8;
-  --foreground: #1c1917;
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
-/* One accent for the whole app (a soft tangerine); swap these steps to re-colour everything. */
+/* One accent for the whole app (orange); swap these steps to re-colour everything. */
 @theme {
-  --color-accent-50: #fff8f1;
-  --color-accent-100: #ffecd9;
-  --color-accent-200: #fdd6b0;
-  --color-accent-300: #fbb97c;
-  --color-accent-400: #f6a05a;
-  --color-accent-500: #ee8a3c;
-  --color-accent-600: #d4641a;
-  --color-accent-700: #b04f14;
-  --color-accent-800: #8a3f13;
-  --color-accent-900: #6f3512;
-  --color-accent-950: #3d1d09;
-
-  /* Warm neutrals; the dark steps are lifted so dark mode stays soft rather than near-black. */
-  --color-zinc-700: #55504b;
-  --color-zinc-800: #403c38;
-  --color-zinc-900: #302d2a;
-  --color-zinc-950: #272522;
+  --color-accent-50: #fff7ed;
+  --color-accent-100: #ffedd5;
+  --color-accent-200: #fed7aa;
+  --color-accent-300: #fdba74;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+  --color-accent-800: #9a3412;
+  --color-accent-900: #7c2d12;
+  --color-accent-950: #431407;
 }
 
 @theme inline {
@@ -35,14 +29,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #201e1c;
-    --foreground: #ece9e5;
+    --background: #0a0a0a;
+    --foreground: #ededed;
   }
 }
 
 body {
   background-color: var(--background);
-  background-image: radial-gradient(ellipse 80% 40% at 50% -5%, rgba(238, 138, 60, 0.12), transparent 70%);
+  background-image: radial-gradient(ellipse 80% 40% at 50% -5%, rgba(249, 115, 22, 0.10), transparent 70%);
   background-repeat: no-repeat;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -50,7 +44,7 @@ body {
 
 @media (prefers-color-scheme: dark) {
   body {
-    background-image: radial-gradient(ellipse 80% 40% at 50% -5%, rgba(238, 138, 60, 0.16), transparent 70%);
+    background-image: radial-gradient(ellipse 80% 40% at 50% -5%, rgba(249, 115, 22, 0.14), transparent 70%);
   }
 }
 
@@ -104,8 +98,8 @@ html {
 
 .lift:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 32px rgba(111, 53, 18, 0.12);
-  border-color: rgb(251 185 124);
+  box-shadow: 0 12px 32px rgba(120, 53, 15, 0.12);
+  border-color: rgb(253 186 116);
 }
 
 @media (prefers-reduced-motion: reduce) {

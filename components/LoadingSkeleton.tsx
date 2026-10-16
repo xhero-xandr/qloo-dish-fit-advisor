@@ -16,7 +16,7 @@ export function LoadingSkeleton({ cities }: { cities: number }) {
   }, []);
 
   return (
-    <div className="mt-10 flex flex-col gap-8" role="status" aria-live="polite">
+    <div className="flex flex-col gap-8" role="status" aria-live="polite">
       <div className="rounded-xl border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950">
         <p className="text-sm font-medium">
           Analyzing{cities > 1 ? ` ${cities} cities` : ""}… <span className="font-normal text-zinc-400">{seconds}s</span>

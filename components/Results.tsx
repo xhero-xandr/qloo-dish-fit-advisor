@@ -44,7 +44,7 @@ export function Results({ result }: { result: PilotPackage }) {
   const agentPlan = result.agent?.analysis?.pilotPlan ?? [];
   const facts = new Map((result.agent?.facts ?? []).map((f) => [f.id, f]));
   return (
-    <div className="mt-10 flex flex-col gap-10">
+    <div className="flex flex-col gap-10">
       {(result.resolvedLocation || result.cachedAt) && (
         <div className="-mb-4 flex flex-col gap-1 text-xs text-zinc-400">
           {result.resolvedLocation && (

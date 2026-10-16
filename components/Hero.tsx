@@ -28,7 +28,7 @@ export function Hero({
         className={`font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-4xl sm:text-6xl sm:leading-[1.05]"}`}
       >
         Dish-Market{" "}
-        <span className="bg-gradient-to-r from-accent-600 to-amber-400 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-accent-600 to-amber-500 bg-clip-text text-transparent">
           Fit Advisor
         </span>
       </h1>
