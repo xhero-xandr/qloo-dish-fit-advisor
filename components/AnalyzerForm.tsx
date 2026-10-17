@@ -79,20 +79,27 @@ export function AnalyzerForm({
 
   return (
     <div className="no-print">
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-zinc-500">
-          Start with an example:
-        </span>
-        {PRESETS.map((p) => (
-          <Chip
-            key={p.concept}
-            onClick={() => applyPreset(p)}
-            disabled={loading}
-            className="px-3 py-1"
-          >
-            {p.concept} · {p.city.split(",")[0]}
-          </Chip>
-        ))}
+      <div className="mb-5">
+        <p className="mb-1.5 text-xs font-medium text-zinc-500">
+          Start with an example
+        </p>
+        <ul className="grid grid-cols-1 gap-1.5">
+          {PRESETS.map((p) => (
+            <li key={p.concept}>
+              <button
+                type="button"
+                onClick={() => applyPreset(p)}
+                disabled={loading}
+                className="flex w-full items-baseline justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-1.5 text-left text-sm text-zinc-700 transition hover:border-accent-400 hover:text-accent-700 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:text-accent-300"
+              >
+                <span className="min-w-0 truncate">{p.concept}</span>
+                <span className="shrink-0 text-xs text-zinc-500">
+                  {p.city.split(",")[0]}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">

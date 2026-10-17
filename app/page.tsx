@@ -45,7 +45,11 @@ export default function Home() {
   const active = results.find((r) => r.city === activeCity);
   const showForm = results.length === 0 || editing;
 
-  function run(nextConcept: string, nextCities: string[], nextDetails: Details) {
+  function run(
+    nextConcept: string,
+    nextCities: string[],
+    nextDetails: Details,
+  ) {
     setEditing(false);
     comparison.run(nextConcept, nextCities, nextDetails);
   }
@@ -88,7 +92,8 @@ export default function Home() {
 
         {auth === "ok" && (
           <div className="grid gap-8 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start print:block">
-            <aside className="no-print lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
+            <aside className="no-print lg:[@media(min-height:860px)]:sticky lg:[@media(min-height:860px)]:top-6">
+              {/* The form only sticks on tall screens; on short ones it scrolls with the page, so there is no scroll box inside the page. */}
               {/* On a phone the form folds into one line once results exist; on a wide screen it stays beside them. */}
               <div className={showForm ? "" : "hidden lg:block"}>
                 <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent-700 dark:text-accent-400">
