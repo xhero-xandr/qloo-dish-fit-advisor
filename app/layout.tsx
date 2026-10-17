@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Dish-Market Fit Advisor",
   description:
-    "Validate a dish or menu concept before you launch it: real candidate venues, their actual audience affinity, and a pilot plan — grounded in Qloo's live taste graph, not guesswork.",
+    "Test the market fit of a dish or menu concept before you launch it: real candidate venues, their actual audience affinity, and a pilot plan — grounded in Qloo's live taste graph, not guesswork.",
   openGraph: {
     title: "Dish-Market Fit Advisor",
     description:

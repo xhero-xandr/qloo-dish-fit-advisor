@@ -335,10 +335,30 @@ clears it. The
 response is marked with `cachedAt` when this happens, and the UI discloses
 it rather than silently reusing data. Concurrent identical requests (a
 double-submit, a second tab) join the run already in progress instead of
-starting a second full pipeline, and the API rejects inputs over 200
+starting a second full pipeline, and the API rejects inputs over 800
 (concept) / 100 (city) characters.
 
 ## Known limitations
+
+### What a result does not establish
+
+The tool tells you whether the *audience and the venues* around a concept look
+right. It does not tell you whether the concept will make money or taste good:
+
+- **Cost and margin.** No ingredient, labour or rent data is used; a
+  well-matched concept can still lose money.
+- **Sales or demand.** Qloo gives taste affinity, not visits, orders or
+  revenue. A high affinity score is a reason to run the pilot, not a forecast.
+- **Recipe and taste.** Nothing here judges whether the dish is good or
+  can be executed consistently; recipe lists are read only to find what kind of
+  food it is.
+- **Individual guests.** Audience scores describe groups that like a venue,
+  not what any one person will do.
+- **Venues' willingness.** A listed venue is a candidate, not an agreement;
+  hours and details come from Qloo's listing and may be out of date.
+
+Treat the output as a structured way to choose and run a small, cheap pilot,
+and decide on the pilot's own results.
 
 - The multi-city "Best fit" verdict is our own heuristic, not a Qloo score:
   `venues found × 2 + average rating`. More matching venues weighs more
@@ -371,9 +391,11 @@ starting a second full pipeline, and the API rejects inputs over 200
   data interpolated (the letter addresses the agent's recommended venue).
   The pilot plan is agent-written when a model is available and falls back to
   a generic, clearly labelled template otherwise.
-- There is no per-IP throttling. The cache, in-flight dedupe, and input caps
-  limit waste, but a determined visitor firing many distinct queries can
-  still exhaust the shared monthly key (~600 full analyses).
+- Throttling is per client and in memory only: the demo account allows 30
+  analyses an hour and 10 sign-in attempts per 10 minutes, and the counters
+  reset on restart. Together with the cache, in-flight dedupe and input caps
+  this limits waste, but a determined visitor can still spend a large part of
+  the shared Qloo quota (10K requests a month, about 15 per full analysis).
 - Venue data is sourced from fixed-location business listings (address,
   phone, hours, rating) — the same shape as Google Places/Yelp. Food trucks,
   street carts, and pop-ups are structurally underrepresented or absent:
