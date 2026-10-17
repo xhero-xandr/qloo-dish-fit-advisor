@@ -35,7 +35,7 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
       <div>
         <h2 className="text-lg font-semibold">Verdict &amp; recommendation</h2>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Written by an AI agent ({models.length > 0 ? models.join(", ") : "Gemini"}) working only from Qloo data. Every
+          Written by an AI agent ({models.length > 0 ? models.join(", ") : "language model"}) working only from Qloo data. Every
           claim cites numbered Qloo facts; tap one to read it and see the Qloo request it came from. A citation shows where a claim comes from, not that the
           reasoning is right
           {analysis && analysis.droppedItems > 0 ? ` — ${analysis.droppedItems} claim(s) without a valid citation were discarded` : ""}

@@ -10,7 +10,7 @@ import {
 import { parseDetails, validateInput, type Details } from "./input.ts";
 import { CityNotFoundError, ConceptNotFoundError } from "./tags.ts";
 
-// Per client: each analysis spends shared Qloo and Gemini quota. Comparing several cities
+// Per client: each analysis spends shared Qloo and language-model quota. Comparing several cities
 // sends one request per city, so this leaves room for a few comparisons an hour.
 const ANALYSES_PER_HOUR = 30;
 

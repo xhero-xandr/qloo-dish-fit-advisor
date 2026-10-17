@@ -46,7 +46,7 @@ export function LoginPanel({
     <section className="no-print w-full rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-lg shadow-accent-900/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
       <h2 className="text-lg font-semibold">Sign in to run an analysis</h2>
       <p className="mt-1 text-sm text-zinc-500">
-        Each analysis spends shared Qloo and Gemini quota, so it sits behind a
+        Each analysis spends shared Qloo and language-model quota, so it sits behind a
         demo account.
       </p>
 

@@ -13,10 +13,13 @@ venues already attract that audience.
 
 ## What it does
 
-You type a dish/menu concept (free text) and a city. The app runs a
-Gemini agent that uses Qloo as its tools, plus a deterministic data pipeline:
+You type a dish/menu description (free text) and a city. The app runs a
+language-model agent that uses Qloo as its tools, plus a deterministic data
+pipeline. The model is configurable (any provider the Vercel AI SDK reaches,
+see "The agent layer"); the examples and measurements below come from Google
+Gemini, which is what it has been tested on:
 
-1. **Agent: concept → taste tags.** Gemini gets two Qloo tools —
+1. **Agent: concept → taste tags.** The model gets two Qloo tools —
    `search_tags` (`GET /v2/tags`) and `find_venues`
    (`GET /v2/insights`, `filter.type=urn:entity:place`) — and a budget of 6
    calls. It splits the concept into its parts, searches each, and verifies
@@ -32,13 +35,13 @@ Gemini agent that uses Qloo as its tools, plus a deterministic data pipeline:
    podcasts — seeded with the matched venues themselves
    (`signal.interests.entities` + `signal.location`).
 3. **Agent: analysis with citations.** Every datum from step 2 is numbered
-   as a fact (F1, F2, …). Gemini writes a verdict, a recommended venue, a
+   as a fact (F1, F2, …). The model writes a verdict, a recommended venue, a
    pilot plan scheduled from that venue's real opening hours, menu
    adjustments, and risks — each item citing the facts it relies on. Code
    drops any item without a valid citation and any recommended venue that
    isn't in the list; the UI lets you tap a citation to read the fact.
 
-If Gemini is unavailable (no key, overload, error), every step falls back to
+If the model is unavailable (no key, overload, error), every step falls back to
 the deterministic path — keyword-based tag ranking and a template plan — and
 the UI says so.
 
@@ -87,15 +90,50 @@ All Qloo calls go through the official hackathon endpoint
 only (see `lib/qloo.ts`). No personal data is ever sent to Qloo — only the
 free-text concept and city the user types.
 
-## The agent layer (Gemini)
+## The agent layer
 
-`lib/agent.ts`, `lib/llm.ts`. Gemini is called server-side through the
-[Vercel AI SDK](https://ai-sdk.dev) (`ai` + `@ai-sdk/google`): the tag agent
-is a `generateText` tool loop (`stopWhen` / `prepareStep`), and the analysis
-is `generateText` with `Output.object` and a zod schema.
+`lib/agent.ts`, `lib/llm.ts`. The model is called server-side through the
+[Vercel AI SDK](https://ai-sdk.dev) (`ai`): the tag agent is a `generateText`
+tool loop (`stopWhen` / `prepareStep`), and the analysis is `generateText` with
+`Output.object` and a zod schema. Nothing in the agent code is specific to one
+provider; `lib/llm.ts` turns configuration into a chain of models.
 
-- **Model:** `gemini-3.5-flash-lite` (configurable via `GEMINI_MODELS`,
-  a comma-separated fallback chain). Chosen by measurement: it answered
+- **Which model: any.** One list, `LLM_MODELS`, comma-separated, tried in
+  order (the next is the fallback when one is out of quota or failing):
+
+  ```sh
+  LLM_MODELS=gemini-3.5-flash-lite                        # a bare name is Google Gemini; key: GEMINI_API_KEY
+  LLM_MODELS=google:gemini-3.5-flash-lite,groq:llama-3.3-70b-versatile
+  LLM_MODELS=openai:gpt-5-mini                            # key: OPENAI_API_KEY
+  LLM_MODELS=ollama:qwen3:8b                              # a local server, no key
+  LLM_MODELS=acme:big-1                                   # any other OpenAI-compatible endpoint:
+  ACME_BASE_URL=https://llm.acme.test/v1                  #   its address and
+  ACME_API_KEY=...                                        #   its key
+  ```
+
+  `google:` uses Google's own provider. Any other `<name>:<model>` goes
+  through an OpenAI-compatible endpoint, which covers OpenAI, Groq,
+  OpenRouter, DeepSeek, Mistral, Together, Anthropic's compatibility
+  endpoint and local servers (their addresses are built in; a key is
+  `<NAME>_API_KEY`, an address override `<NAME>_BASE_URL`). A model whose key
+  is missing is skipped with a note in the server log. `GEMINI_MODELS` is
+  still read as the older name.
+- **What has actually been run:** Gemini end to end, and the compatible path
+  against a local mock of the OpenAI chat-completions API in the test suite
+  (plain text, structured output, a tool loop, a 429), not against a live
+  third-party provider. Earlier, Groq's `gpt-oss-120b` failed the tag
+  agent's tool loop (it called tools that were not offered and invented tag
+  ids) and AWS Bedrock was unavailable to the account, so "works with any
+  model" means any model that can follow a tool loop and fill a schema; a
+  weaker one is caught by the code-side checks and falls back to the
+  deterministic pipeline, but will give worse answers. Changing the model
+  changes verdicts, so run the five-concept comparison after any change.
+- **Rate-limit handling is provider-neutral:** a 429 that names a daily or
+  account quota ("PerDay", `insufficient_quota`), or asks to wait longer than
+  a minute (`Retry-After`, "try again in 2m30s", Gemini's `retryDelay`),
+  parks that model so later analyses skip it.
+- **Default and measurements (Gemini):** `gemini-3.5-flash-lite` is the
+  default when nothing is set, chosen by measurement: it answered
   tool turns in under a second, while 3.8-flash and 3.6-flash mostly
   returned 503, hung past 90s, or took ~55s per turn — and on the free tier
   3.8-flash allows only 20 requests/day.
@@ -249,7 +287,7 @@ is `generateText` with `Output.object` and a zod schema.
   tappable so a reader can check.
 - **Data sent to Google:** the concept, the city, and the Qloo-derived fact
   sheet. No personal data.
-- **Fallback:** without `GEMINI_API_KEY`, or if a step fails, the app runs
+- **Fallback:** without a usable model key, or if a step fails, the app runs
   the deterministic pipeline and shows why.
 - **Tuned from live runs, not just written:** the first versions scheduled a
   "pilot" across a venue's whole opening hours for a month, claimed foot
@@ -285,12 +323,12 @@ gets faster automatically — no code change needed.
 On top of that, identical concept+city requests are served from an
 in-memory cache (`lib/pilot-package.ts`, 12 hours by default, configurable
 via `PILOT_CACHE_TTL_MINUTES`) instead of re-querying. The long default is
-deliberate: venue data doesn't change hour to hour, and the free Gemini tier
+deliberate: venue data doesn't change hour to hour, and a free model tier
 allows ~500 requests/day (~110 analyses at ~4.4 requests each). The cache
 only saves quota on repeats — presets, reloads, re-running a comparison — so
 each of those costs quota once per half day, not once per visitor. A new
-concept or city always runs a fresh analysis, so the daily Gemini quota, not
-the cache, is what bounds free-form use. A result where the agent fell back (Gemini
+concept or city always runs a fresh analysis, so the model provider's daily quota (Gemini's, in the tests), not
+the cache, is what bounds free-form use. A result where the agent fell back (the model
 overloaded or out of quota) is cached for only 10 minutes, so a brief outage
 doesn't pin the degraded version. The cache is in memory, so a restart
 clears it. The
@@ -313,7 +351,7 @@ starting a second full pipeline, and the API rejects inputs over 200
   the full phrase), so for a long concept later words never reach Qloo —
   "Korean fried chicken with natural wine pairing" only searches "korean",
   "fried", "chicken". The agent path doesn't have this problem; the fallback
-  does, and is only used when Gemini is unavailable.
+  does, and is only used when the model is unavailable.
 - The agent's citation check proves a cited fact exists, not that it
   supports the claim. In testing, the lighter fallback model occasionally
   cited facts loosely; the prompt forbids claims Qloo can't back (foot
@@ -331,7 +369,7 @@ starting a second full pipeline, and the API rejects inputs over 200
   rather than silently returning nothing or a bad guess.
 - The tasting brief and outreach letter are still fixed templates with Qloo
   data interpolated (the letter addresses the agent's recommended venue).
-  The pilot plan is agent-written when Gemini is available and falls back to
+  The pilot plan is agent-written when a model is available and falls back to
   a generic, clearly labelled template otherwise.
 - There is no per-IP throttling. The cache, in-flight dedupe, and input caps
   limit waste, but a determined visitor firing many distinct queries can
@@ -357,7 +395,7 @@ starting a second full pipeline, and the API rejects inputs over 200
 
 ## Demo login and abuse limits
 
-Every analysis spends shared Qloo and Gemini quota, so `/api/analyze` can sit
+Every analysis spends shared Qloo and model quota, so `/api/analyze` can sit
 behind a single demo account (`lib/auth.ts`). Set `DEMO_PASSWORD` (and
 optionally `DEMO_USER` or `DEMO_USERNAME`, default `demo`) to turn it on; without it the app is
 open, which is what local development uses. The login page shows the demo

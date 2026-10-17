@@ -1,4 +1,4 @@
-// Gemini-driven agent steps. Qloo is the only source of facts: the model can
+// Model-driven agent steps. Qloo is the only source of facts: the model can
 // call Qloo through tools and must cite numbered Qloo facts; code validates
 // every ID and citation it returns and drops anything it can't trace.
 

@@ -1,5 +1,5 @@
 // A small in-memory cache for finished analyses. Identical requests reuse a result instead of
-// re-spending Qloo and Gemini quota, and a second request for something already running joins that run.
+// re-spending Qloo and language-model quota, and a second request for something already running joins that run.
 
 export interface CacheOptions {
   ttlMs: number;

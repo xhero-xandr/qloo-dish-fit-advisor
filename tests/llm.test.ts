@@ -113,3 +113,25 @@ test("a model whose cooldown ends right now is back in service", () => {
     Date.now = realNow;
   }
 });
+
+const withHeaders = (body: string, headers: Record<string, string>, status = 429) =>
+  new APICallError({ message: "limit", url: "https://x", requestBodyValues: {}, statusCode: status, responseBody: body, responseHeaders: headers });
+
+test("other providers' limits are read too: Retry-After, 'try again in', insufficient_quota", () => {
+  llm.parkIfQuotaSpent("ra-long", withHeaders("{}", { "retry-after": "600" }));
+  assert.equal(llm.isModelParked("ra-long"), true, "a ten-minute Retry-After parks it");
+  llm.parkIfQuotaSpent("ra-short", withHeaders("{}", { "retry-after": "20" }));
+  assert.equal(llm.isModelParked("ra-short"), false, "twenty seconds is a per-minute limit");
+  llm.parkIfQuotaSpent("ra-date", withHeaders("{}", { "retry-after": new Date(Date.now() + 3_600_000).toUTCString() }));
+  assert.equal(llm.isModelParked("ra-date"), true, "a date an hour away counts");
+  llm.parkIfQuotaSpent("oa-quota", withHeaders('{"error":{"code":"insufficient_quota","message":"You exceeded your current quota"}}', {}));
+  assert.equal(llm.isModelParked("oa-quota"), true);
+  llm.parkIfQuotaSpent("groq-min", withHeaders('{"error":{"message":"Rate limit reached ... Please try again in 7.5s."}}', {}));
+  assert.equal(llm.isModelParked("groq-min"), false);
+  llm.parkIfQuotaSpent("groq-day", withHeaders('{"error":{"message":"Rate limit reached for model per day ... Please try again in 2m30s."}}', {}));
+  assert.equal(llm.isModelParked("groq-day"), true, "named as a daily limit");
+  llm.parkIfQuotaSpent("oa-long", withHeaders('{"error":{"message":"Please try again in 2m30s."}}', {}));
+  assert.equal(llm.isModelParked("oa-long"), true, "150 seconds is longer than a per-minute window");
+  llm.parkIfQuotaSpent("oa-ms", withHeaders('{"error":{"message":"Please try again in 250ms."}}', {}));
+  assert.equal(llm.isModelParked("oa-ms"), false);
+});

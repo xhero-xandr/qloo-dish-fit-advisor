@@ -151,7 +151,7 @@ async function fetchCulturalAffinity(
 }
 
 // Identical concept+city requests reuse a result instead of re-spending quota. Long by default:
-// venue data doesn't change hour to hour, while the free Gemini tier allows ~500 requests/day
+// venue data doesn't change hour to hour, while a free model tier allows ~500 requests/day
 // (~110 analyses) and judges mostly click the same presets.
 const resultCache = createResultCache<PilotPackage>({
   ttlMs: Number(process.env.PILOT_CACHE_TTL_MINUTES ?? 12 * 60) * 60 * 1000,

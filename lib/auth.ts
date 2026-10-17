@@ -1,5 +1,5 @@
 // A light demo login: one shared account from the environment, a signed session cookie, and
-// per-client rate limits. It keeps drive-by traffic off the shared Qloo and Gemini quotas;
+// per-client rate limits. It keeps drive-by traffic off the shared Qloo and language-model quotas;
 // it is not user management. Auth is off unless DEMO_PASSWORD is set.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
