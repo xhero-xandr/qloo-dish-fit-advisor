@@ -1,3 +1,4 @@
+import { FactSourceView } from "./FactSource";
 import { Citations } from "./Citations";
 import type { AgentOutput, CitedItem, Fact, Fit } from "./types";
 
@@ -35,7 +36,7 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
         <h2 className="text-lg font-semibold">Verdict &amp; recommendation</h2>
         <p className="mt-0.5 text-xs text-zinc-500">
           Written by an AI agent ({models.length > 0 ? models.join(", ") : "Gemini"}) working only from Qloo data. Every
-          claim cites numbered Qloo facts; tap one to read it. A citation shows where a claim comes from, not that the
+          claim cites numbered Qloo facts; tap one to read it and see the Qloo request it came from. A citation shows where a claim comes from, not that the
           reasoning is right
           {analysis && analysis.droppedItems > 0 ? ` — ${analysis.droppedItems} claim(s) without a valid citation were discarded` : ""}
           {analysis && analysis.correctedItems > 0
@@ -128,6 +129,7 @@ export function AgentPanel({ agent }: { agent: AgentOutput }) {
           {agent.facts.map((f) => (
             <li key={f.id}>
               <span className="font-mono text-sky-700 dark:text-sky-300">{f.id}</span> {f.text}
+              <FactSourceView source={f.source} />
             </li>
           ))}
         </ol>

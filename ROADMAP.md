@@ -17,6 +17,7 @@ cannot be done from the code alone.
 | 4d | Tests for the Qloo client (params, spacing, 429 retry, quota exhaustion), model parking, the sign-in and analyze routes (status codes, limits, cookie flags) | done |
 | 4e | Mutation testing (`npm run mutate`) across the logic modules; tests added for what it showed, 67.5% to 92.4% | done |
 | 4f | Long descriptions (800 chars) read into a search phrase and dishes; optional dietary, audience, price and season details, each applied where Qloo can answer it | done |
+| 4g | Provenance: each fact carries the Qloo request(s) behind it, shown in the citation with a copy-as-curl command | done |
 | 6 | Split `lib/pilot-package.ts` into `facts.ts`, `venues.ts` (data shaping), `tags.ts` (baseline tag choice) and `result-cache.ts`, each with tests; `pilot-package.ts` keeps only the orchestration | done |
 
 ## After the hackathon

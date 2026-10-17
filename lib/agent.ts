@@ -5,6 +5,7 @@
 import { generateText, hasToolCall, isStepCount, Output, tool } from "ai";
 import { z } from "zod";
 import { chefNotesText } from "./brief";
+import type { FactSource } from "./provenance";
 import { enforceGrounding } from "./guards";
 import type { WeekWindows } from "./hours";
 import { isModelParked, LLM_MAX_RETRIES, llmModels, parkIfQuotaSpent, type ChainModel } from "./llm";
@@ -42,6 +43,8 @@ export interface Fact {
   text: string;
   /** Name of the venue this fact is about, if it's about one venue. */
   venue?: string;
+  /** The Qloo request(s) this fact came from. Shown to the visitor; never part of what the agent reads. */
+  source?: FactSource;
 }
 
 export interface CitedItem {

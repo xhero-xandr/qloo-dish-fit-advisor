@@ -167,3 +167,84 @@ test("requested facts come after the venue facts, so the earlier numbering does 
   assert.deepEqual(asked.slice(0, plain.length - 0).map((f) => f.id).slice(0, 7), plain.map((f) => f.id).slice(0, 7));
   assert.equal(asked.length, plain.length + 1);
 });
+
+// Provenance: every fact can show the Qloo request it came from.
+const base = "https://hackathon.api.qloo.com";
+const sources = {
+  base,
+  places: (tagId: string) => ({ path: "/v2/insights", params: { "filter.type": "urn:entity:place", "filter.tags": tagId } }),
+  demographics: (entityId: string) => ({ path: "/v2/insights", params: { "filter.type": "urn:demographics", "signal.interests.entities": entityId } }),
+  cultural: {
+    brands: { path: "/v2/insights", params: { "filter.type": "urn:entity:brand" } },
+    tvShows: { path: "/v2/insights", params: { "filter.type": "urn:entity:tv_show" } },
+  },
+};
+const withId = (v: object, entityId: string) => ({ ...v, entityId }) as never;
+
+test("without sources no fact carries a source, as before", () => {
+  const facts = buildFacts({ city: "x", primaryTag: tag, secondary: [], venues: [withId(full, "E1")], regionInsights: [] });
+  assert.ok(facts.every((f) => f.source === undefined));
+});
+
+test("venue facts point at the venue search, audience facts at that venue's own audience request", () => {
+  const facts = buildFacts({ city: "x", primaryTag: tag, secondary: [], venues: [withId(full, "E1")], regionInsights: [], sources });
+  const search = { path: "/v2/insights", params: { "filter.type": "urn:entity:place", "filter.tags": "t" } };
+  const byText = (re: RegExp) => facts.find((f) => re.test(f.text))!;
+  for (const re of [/rating 4\.6/, /opening hours/, /dietary options/, /Qloo tags/, /review keywords/]) {
+    assert.deepEqual(byText(re).source, { base, requests: [search] }, String(re));
+  }
+  assert.deepEqual(byText(/audience: age/).source?.requests, [sources.demographics("E1")]);
+  assert.match(facts[0].source?.note ?? "", /tag searches/);
+  assert.deepEqual(facts[0].source?.requests, [search]);
+});
+
+test("computed facts say so and list every request they were worked out from", () => {
+  const facts = buildFacts({
+    city: "x",
+    primaryTag: tag,
+    secondary: [],
+    venues: [withId(full, "E1"), withId(full, "E2"), withId(bare, "E3")],
+    aggregate: { age: { "25_to_29": 0.1 }, gender: { male: 0.2, female: -0.2 } },
+    regionInsights: [{ keyword: "sake", mentions: 46 }],
+    sources,
+  });
+  const agg = facts.find((f) => f.text.startsWith("Across all") && f.text.includes("average audience"))!;
+  assert.deepEqual(agg.source?.requests.map((r) => r.params["signal.interests.entities"]), ["E1", "E2"], "only venues that have an audience result");
+  assert.match(agg.source?.note ?? "", /Averaged here/);
+  const kw = facts.find((f) => f.text.includes("most-mentioned review keywords") && f.text.startsWith("Across all"))!;
+  assert.match(kw.source?.note ?? "", /summed here/);
+});
+
+test("cultural facts point at the request for their own group, and secondary tags at their own venue search", () => {
+  const facts = buildFacts({
+    city: "x",
+    primaryTag: tag,
+    venues: [withId(bare, "E1")],
+    regionInsights: [],
+    culturalAffinity: { brands: [{ name: "Nike" }], tvShows: [{ name: "Show" }], artists: [{ name: "Band" }], podcasts: [] } as never,
+    secondary: [{ id: "sec1", name: "Sake Bar", type: "x", venueCount: 3 }, { id: "sec2", name: "Ramen", type: "x" }] as never,
+    sources,
+  });
+  assert.deepEqual(facts.find((f) => f.text.includes("brands"))?.source?.requests, [sources.cultural.brands]);
+  assert.deepEqual(facts.find((f) => f.text.includes("TV shows"))?.source?.requests, [sources.cultural.tvShows]);
+  assert.equal(facts.find((f) => f.text.includes("music artists"))?.source, undefined, "no request recorded for that group, so no claim of one");
+  assert.deepEqual(facts.find((f) => f.text.includes('"Sake Bar"'))?.source?.requests, [sources.places("sec1")]);
+  assert.equal(facts.find((f) => f.text.includes('"Ramen"'))?.source, undefined, "a tag whose venues were never checked has no request");
+});
+
+test("the chef's requests are answered from the same request they were checked against", () => {
+  const facts = buildFacts({
+    city: "x",
+    primaryTag: tag,
+    secondary: [],
+    venues: [withId(full, "E1")],
+    regionInsights: [],
+    requested: { dietary: ["Vegan"], prices: [3], audience: { age: ["25_to_29"] } },
+    sources,
+  });
+  const asked = facts.filter((f) => f.text.startsWith("The chef asked"));
+  assert.equal(asked.length, 3);
+  assert.deepEqual(asked[0].source?.requests, [sources.places("t")]);
+  assert.match(asked[0].source?.note ?? "", /checked here/);
+  assert.deepEqual(asked[2].source?.requests, [sources.demographics("E1")]);
+});

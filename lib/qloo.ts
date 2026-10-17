@@ -1,9 +1,16 @@
 import { isUnknownLocalityError } from "./location.ts";
+import {
+  demographicsParams,
+  placeSearchParams,
+  recommendParams,
+  tagSearchParams,
+} from "./provenance.ts";
 
 // Thin server-side client for the Qloo Insights API (hackathon endpoint).
 // Docs: https://docs.qloo.com/reference/insights-api-deep-dive
 
-const BASE_URL = process.env.QLOO_BASE_URL ?? "https://hackathon.api.qloo.com";
+export const BASE_URL =
+  process.env.QLOO_BASE_URL ?? "https://hackathon.api.qloo.com";
 const API_KEY = process.env.QLOO_API_KEY;
 
 if (!API_KEY && process.env.NODE_ENV !== "test") {
@@ -49,7 +56,10 @@ function retryDelayMs(res: Response, attempt: number): number {
   return Math.min(500 * (attempt + 1), 3000);
 }
 
-async function qlooGet<T>(path: string, params: Record<string, string | number | boolean | undefined>): Promise<T> {
+async function qlooGet<T>(
+  path: string,
+  params: Record<string, string | number | boolean | undefined>,
+): Promise<T> {
   const url = new URL(path, BASE_URL);
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) url.searchParams.set(key, String(value));
@@ -57,7 +67,10 @@ async function qlooGet<T>(path: string, params: Record<string, string | number |
 
   for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
     await scheduleRequestSlot();
-    if (process.env.QLOO_LOG === "1") console.info(`[qloo] ${path} ${url.searchParams.get("filter.type") ?? ""}`);
+    if (process.env.QLOO_LOG === "1")
+      console.info(
+        `[qloo] ${path} ${url.searchParams.get("filter.type") ?? ""}`,
+      );
     const res = await fetch(url, {
       headers: { "X-Api-Key": API_KEY ?? "" },
       cache: "no-store",
@@ -66,13 +79,17 @@ async function qlooGet<T>(path: string, params: Record<string, string | number |
 
     if (res.status === 429) {
       if (res.headers.get("x-month-ratelimit-remaining") === "0") {
-        throw new QlooQuotaError("Qloo monthly request quota for this API key is exhausted — retrying won't help until it resets.");
+        throw new QlooQuotaError(
+          "Qloo monthly request quota for this API key is exhausted — retrying won't help until it resets.",
+        );
       }
       if (attempt < MAX_RATE_LIMIT_RETRIES) {
         await sleep(retryDelayMs(res, attempt));
         continue;
       }
-      throw new QlooQuotaError("Qloo rate limit hit (429) repeatedly — the shared hackathon key allows only ~5 requests/second. Please wait a bit and try again.");
+      throw new QlooQuotaError(
+        "Qloo rate limit hit (429) repeatedly — the shared hackathon key allows only ~5 requests/second. Please wait a bit and try again.",
+      );
     }
     const body = await res.text().catch(() => "");
     throw new Error(`Qloo API ${res.status} on ${path}: ${body.slice(0, 300)}`);
@@ -89,11 +106,10 @@ export interface QlooTag {
 }
 
 export async function findTags(query: string, limit = 10): Promise<QlooTag[]> {
-  const data = await qlooGet<{ results: { tags: QlooTag[] } }>("/v2/tags", {
-    "filter.query": query,
-    "feature.semantic_search": true,
-    take: limit,
-  });
+  const data = await qlooGet<{ results: { tags: QlooTag[] } }>(
+    "/v2/tags",
+    tagSearchParams(query, limit),
+  );
   return data.results?.tags ?? [];
 }
 
@@ -106,8 +122,16 @@ export interface QlooPlace {
     address?: string;
     business_rating?: number;
     price_level?: number | null;
-    geocode?: { city?: string; metro?: string; admin1_region?: string; country?: string };
-    hours?: Record<string, { opens: string | null; closes: string | null; closed: boolean }[]>;
+    geocode?: {
+      city?: string;
+      metro?: string;
+      admin1_region?: string;
+      country?: string;
+    };
+    hours?: Record<
+      string,
+      { opens: string | null; closes: string | null; closed: boolean }[]
+    >;
     website?: string;
     phone?: string;
     is_closed?: boolean;
@@ -123,17 +147,12 @@ export async function findPlacesByTags(
   city: string,
   take = 8,
   /** Optional audience the venues should skew towards; sent as Qloo's demographic signals. */
-  audience?: { age?: readonly string[]; gender?: string }
+  audience?: { age?: readonly string[]; gender?: string },
 ): Promise<QlooPlace[]> {
-  const data = await qlooGet<{ results: { entities: QlooPlace[] } }>("/v2/insights", {
-    "filter.type": "urn:entity:place",
-    "filter.tags": tagIds.join(","),
-    "filter.location.query": city,
-    "filter.location.radius": 0,
-    ...(audience?.age?.length ? { "signal.demographics.age": audience.age.join(",") } : {}),
-    ...(audience?.gender ? { "signal.demographics.gender": audience.gender } : {}),
-    take,
-  });
+  const data = await qlooGet<{ results: { entities: QlooPlace[] } }>(
+    "/v2/insights",
+    placeSearchParams(tagIds, city, take, audience),
+  );
   return data.results?.entities ?? [];
 }
 
@@ -142,15 +161,14 @@ export interface DemographicsResult {
   gender: Record<string, number>;
 }
 
-export async function audienceDemographics(entityId: string): Promise<DemographicsResult | undefined> {
-  const data = await qlooGet<{ results: { demographics: { entity_id: string; query: DemographicsResult }[] } }>(
-    "/v2/insights",
-    {
-      "filter.type": "urn:demographics",
-      "signal.interests.entities": entityId,
-      take: 1,
-    }
-  );
+export async function audienceDemographics(
+  entityId: string,
+): Promise<DemographicsResult | undefined> {
+  const data = await qlooGet<{
+    results: {
+      demographics: { entity_id: string; query: DemographicsResult }[];
+    };
+  }>("/v2/insights", demographicsParams(entityId));
   return data.results?.demographics?.[0]?.query;
 }
 
@@ -176,18 +194,16 @@ export async function recommendByEntities(
   entityIds: string[],
   targetType: string,
   location: string,
-  take = 5
+  take = 5,
 ): Promise<CrossDomainEntity[]> {
   // Seeding with the matched venues themselves describes *their* audience. Seeding with a
   // tag instead degrades badly: a broad tag without location returns the tag's global
   // audience (izakaya -> Japanese brands), and a narrow tag with location returns generic
   // city culture (korean_fried_chicken + NYC -> The New Yorker, MoMA).
-  const data = await qlooGet<{ results: { entities: CrossDomainEntity[] } }>("/v2/insights", {
-    "filter.type": targetType,
-    "signal.interests.entities": entityIds.join(","),
-    "signal.location.query": location,
-    take,
-  });
+  const data = await qlooGet<{ results: { entities: CrossDomainEntity[] } }>(
+    "/v2/insights",
+    recommendParams(entityIds, targetType, location, take),
+  );
   return data.results?.entities ?? [];
 }
 
@@ -195,9 +211,15 @@ export async function recommendByEntities(
  * Where Qloo places a city query: the geocode of the first restaurant it returns there. `null` means Qloo
  * answered and has no restaurants there at all; `undefined` means the lookup itself failed.
  */
-export async function probeLocation(query: string): Promise<QlooPlace["properties"]["geocode"] | null | undefined> {
+export async function probeLocation(
+  query: string,
+): Promise<QlooPlace["properties"]["geocode"] | null | undefined> {
   try {
-    const found = await findPlacesByTags(["urn:tag:genre:place:restaurant"], query, 1);
+    const found = await findPlacesByTags(
+      ["urn:tag:genre:place:restaurant"],
+      query,
+      1,
+    );
     return found.length === 0 ? null : found[0].properties?.geocode;
   } catch (error) {
     return isUnknownLocalityError(error) ? null : undefined;

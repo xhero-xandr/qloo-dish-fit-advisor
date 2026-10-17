@@ -276,3 +276,24 @@ test("an audience, when given, is sent as Qloo's demographic signals and otherwi
     restore();
   }
 });
+
+test("what each call sends is exactly what its provenance builder describes", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const { demographicsParams, placeSearchParams, recommendParams, tagSearchParams } = await import("../lib/provenance.ts");
+  const sent = (call: Call) => Object.fromEntries([...call.url.searchParams].map(([k, v]) => [k, v]));
+  const asStrings = (p: Record<string, string | number | boolean>) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)]));
+  const calls = stubFetch([json({ results: { tags: [], entities: [], demographics: [] } })]);
+  try {
+    await settle(qloo.findTags("ramen", 7));
+    await settle(qloo.findPlacesByTags(["t1", "t2"], "Austin, TX", 8, { age: ["25_to_29"], gender: "male" }));
+    await settle(qloo.audienceDemographics("e1"));
+    await settle(qloo.recommendByEntities(["v1", "v2"], "urn:entity:brand", "Austin, TX", 5));
+    assert.deepEqual(sent(calls[0]), asStrings(tagSearchParams("ramen", 7)));
+    assert.deepEqual(sent(calls[1]), asStrings(placeSearchParams(["t1", "t2"], "Austin, TX", 8, { age: ["25_to_29"], gender: "male" })));
+    assert.deepEqual(sent(calls[2]), asStrings(demographicsParams("e1")));
+    assert.deepEqual(sent(calls[3]), asStrings(recommendParams(["v1", "v2"], "urn:entity:brand", "Austin, TX", 5)));
+    for (const c of calls) assert.ok(!JSON.stringify(sent(c)).includes("test-key"), "the key is never among the parameters");
+  } finally {
+    restore();
+  }
+});

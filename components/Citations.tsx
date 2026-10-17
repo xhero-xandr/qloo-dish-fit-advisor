@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FactSourceView } from "./FactSource";
 import type { Fact } from "./types";
 
 export function Citations({ ids, facts }: { ids: string[]; facts: Map<string, Fact> }) {
@@ -29,6 +30,7 @@ export function Citations({ ids, facts }: { ids: string[]; facts: Map<string, Fa
           {ids.map((id) => (
             <span key={id} className="block">
               <span className="font-mono text-sky-700 dark:text-sky-300">{id}</span> {facts.get(id)?.text}
+              <FactSourceView source={facts.get(id)?.source} />
             </span>
           ))}
         </span>

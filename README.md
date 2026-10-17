@@ -151,6 +151,16 @@ is `generateText` with `Output.object` and a zod schema.
   0.4-0.9 s and the analysis at 8-14 s. A model call that stalls is cut off
   at 50 s (tag choice) / 60 s (analysis) and the pipeline falls back to the
   deterministic path.
+- **Every fact shows the Qloo request it came from:** open a citation and
+  "Where this comes from" gives the endpoint and parameters (for example
+  `GET /v2/insights · filter.type=urn:demographics · signal.interests.entities=<venue id>`)
+  and a "Copy as curl" button whose command uses `$QLOO_API_KEY` as a
+  placeholder. Facts worked out here rather than read from one response say so
+  ("Averaged here across these requests, one per venue") and list every request
+  behind them. The parameters are built by the same functions that make the
+  calls (`lib/provenance.ts`), and a test compares what is sent with what is
+  shown, so the two cannot drift. The provenance is for the reader: it is not
+  part of what the model sees, and no key is ever in it.
 - **A description, not just a keyword, and optional details Qloo can answer:**
   the dish field takes up to 800 characters. A long or list-like text is read
   once (one short model call, `lib/brief.ts`) into a search phrase and the
