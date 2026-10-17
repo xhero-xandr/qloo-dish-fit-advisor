@@ -15,8 +15,9 @@ interface Entry<T> {
   expiresAt: number;
 }
 
-export function cacheKey(concept: string, city: string): string {
-  return `${concept.trim().toLowerCase()}::${city.trim().toLowerCase()}`;
+export function cacheKey(concept: string, city: string, details?: unknown): string {
+  const base = `${concept.trim().toLowerCase()}::${city.trim().toLowerCase()}`;
+  return details ? `${base}::${JSON.stringify(details)}` : base;
 }
 
 export function createResultCache<T>(options: CacheOptions) {

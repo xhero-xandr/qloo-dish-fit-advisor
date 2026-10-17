@@ -1,3 +1,4 @@
+import { BriefSummary } from "./BriefSummary";
 import { AgentPanel } from "./AgentPanel";
 import { Citations } from "./Citations";
 import { CulturalAffinityPanel } from "./CulturalAffinity";
@@ -71,6 +72,8 @@ export function Results({ result }: { result: PilotPackage }) {
           </ul>
         </section>
       )}
+
+      <BriefSummary result={result} />
 
       <nav
         aria-label="Sections"

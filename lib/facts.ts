@@ -3,6 +3,7 @@
 
 import type { AgentTagDecision, Fact } from "./agent";
 import type { DemographicsResult } from "./qloo";
+import type { Details } from "./input.ts";
 import type { CulturalAffinity, CulturalSignalItem, RegionInsight, VenueCandidate } from "./pilot-package";
 
 export type Tag = { id: string; name: string; type: string };
@@ -37,6 +38,8 @@ export function buildFacts(input: {
   aggregate?: DemographicsResult;
   regionInsights: RegionInsight[];
   culturalAffinity?: CulturalAffinity;
+  /** What the chef asked for beyond the description; each request is answered from Qloo's data for every venue. */
+  requested?: Details;
 }): Fact[] {
   const facts: Fact[] = [];
   const add = (text: string, venue?: string) => facts.push({ id: `F${facts.length + 1}`, text, venue });
@@ -57,6 +60,7 @@ export function buildFacts(input: {
     }
     if (v.demographics) add(`Venue "${v.name}" audience: ${describeDemographicsFact(v.demographics)}.`, v.name);
   }
+  addRequestedFacts(input.requested, input.venues, add);
   if (input.aggregate) add(`Across all ${n} matched venues combined, average audience ${describeDemographicsFact(input.aggregate)}.`);
   if (input.regionInsights.length > 0) {
     add(
@@ -92,4 +96,49 @@ export function buildFacts(input: {
     }
   }
   return facts;
+}
+
+const AGE_LABELS: Record<string, string> = { ...AGE_LABEL };
+
+/** The chef's dietary, price and audience requests, each checked against what Qloo says about every venue. */
+function addRequestedFacts(
+  requested: Details | undefined,
+  venues: VenueCandidate[],
+  add: (text: string, venue?: string) => void
+) {
+  if (!requested) return;
+  for (const diet of requested.dietary ?? []) {
+    for (const v of venues) {
+      const listed = v.dietaryOptions.some((d) => d.toLowerCase() === diet.toLowerCase());
+      add(
+        listed
+          ? `The chef asked for "${diet}". Venue "${v.name}" lists it among its Qloo dietary options.`
+          : `The chef asked for "${diet}". Venue "${v.name}" does not list it among its Qloo dietary options.`,
+        v.name
+      );
+    }
+  }
+  if (requested.prices) {
+    const wanted = requested.prices.map((p) => "$".repeat(p)).join(", ");
+    for (const v of venues) {
+      if (!v.priceLevel) continue;
+      const inside = (requested.prices as number[]).includes(v.priceLevel);
+      add(
+        `The chef asked for price level ${wanted}. Venue "${v.name}" is ${"$".repeat(v.priceLevel)}, ${inside ? "inside" : "outside"} that range.`,
+        v.name
+      );
+    }
+  }
+  const a = requested.audience;
+  if (a) {
+    const wanted = [...(a.age ?? []).map((g) => AGE_LABELS[g] ?? g), ...(a.gender ? [a.gender] : [])].join(", ");
+    for (const v of venues) {
+      if (!v.demographics) continue;
+      const parts = [
+        ...(a.age ?? []).map((g) => `${AGE_LABELS[g] ?? g} ${signed(v.demographics?.age?.[g] ?? 0)}`),
+        ...(a.gender ? [`${a.gender} ${signed(v.demographics?.gender?.[a.gender] ?? 0)}`] : []),
+      ];
+      add(`The chef asked for this audience: ${wanted}. Venue "${v.name}" audience affinity for it (Qloo, vs. average): ${parts.join("; ")}.`, v.name);
+    }
+  }
 }

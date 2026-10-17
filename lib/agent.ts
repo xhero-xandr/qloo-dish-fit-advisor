@@ -4,6 +4,7 @@
 
 import { generateText, hasToolCall, isStepCount, Output, tool } from "ai";
 import { z } from "zod";
+import { chefNotesText } from "./brief";
 import { enforceGrounding } from "./guards";
 import type { WeekWindows } from "./hours";
 import { isModelParked, LLM_MAX_RETRIES, llmModels, parkIfQuotaSpent, type ChainModel } from "./llm";
@@ -289,7 +290,9 @@ export async function synthesizeWithAgent(
   city: string,
   facts: Fact[],
   venueNames: string[],
-  windows: Map<string, WeekWindows> = new Map()
+  windows: Map<string, WeekWindows> = new Map(),
+  /** What the chef said beyond the description, when they said it. Left out of the prompt otherwise. */
+  chefNotes?: { dishes?: string[]; season?: string }
 ): Promise<AgentAnalysis> {
   const factList = facts.map((f) => `${f.id}: ${f.text}`).join("\n");
 
@@ -297,7 +300,7 @@ export async function synthesizeWithAgent(
     const { output } = await generateText({
       model,
       system: ANALYSIS_SYSTEM_PROMPT,
-      prompt: `Concept: ${JSON.stringify(concept)}\nCity: ${JSON.stringify(city)}\n\nFacts:\n${factList}`,
+      prompt: `Concept: ${JSON.stringify(concept)}\nCity: ${JSON.stringify(city)}${chefNotesText(chefNotes)}\n\nFacts:\n${factList}`,
       output: Output.object({ schema: ANALYSIS_SCHEMA }),
       ...SAMPLING,
       maxRetries: LLM_MAX_RETRIES,

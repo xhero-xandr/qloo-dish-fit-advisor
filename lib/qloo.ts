@@ -57,6 +57,7 @@ async function qlooGet<T>(path: string, params: Record<string, string | number |
 
   for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
     await scheduleRequestSlot();
+    if (process.env.QLOO_LOG === "1") console.info(`[qloo] ${path} ${url.searchParams.get("filter.type") ?? ""}`);
     const res = await fetch(url, {
       headers: { "X-Api-Key": API_KEY ?? "" },
       cache: "no-store",
@@ -117,12 +118,20 @@ export interface QlooPlace {
   popularity?: number;
 }
 
-export async function findPlacesByTags(tagIds: string[], city: string, take = 8): Promise<QlooPlace[]> {
+export async function findPlacesByTags(
+  tagIds: string[],
+  city: string,
+  take = 8,
+  /** Optional audience the venues should skew towards; sent as Qloo's demographic signals. */
+  audience?: { age?: readonly string[]; gender?: string }
+): Promise<QlooPlace[]> {
   const data = await qlooGet<{ results: { entities: QlooPlace[] } }>("/v2/insights", {
     "filter.type": "urn:entity:place",
     "filter.tags": tagIds.join(","),
     "filter.location.query": city,
     "filter.location.radius": 0,
+    ...(audience?.age?.length ? { "signal.demographics.age": audience.age.join(",") } : {}),
+    ...(audience?.gender ? { "signal.demographics.gender": audience.gender } : {}),
     take,
   });
   return data.results?.entities ?? [];

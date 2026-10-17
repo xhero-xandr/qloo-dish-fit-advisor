@@ -13,6 +13,7 @@ import { MethodologyDetails } from "@/components/MethodologyDetails";
 import { Results } from "@/components/Results";
 import { RunSummary } from "@/components/RunSummary";
 import { Button } from "@/components/ui";
+import type { Details } from "@/lib/input";
 import { useComparison } from "@/hooks/useComparison";
 import { useSession } from "@/hooks/useSession";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const { auth, authRequired, demo, refresh, signOut } = useSession();
   const [concept, setConcept] = useState("");
   const [cities, setCities] = useState<string[]>([]);
+  const [details, setDetails] = useState<Details>({});
   const [editing, setEditing] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -43,9 +45,9 @@ export default function Home() {
   const active = results.find((r) => r.city === activeCity);
   const showForm = results.length === 0 || editing;
 
-  function run(nextConcept: string, nextCities: string[]) {
+  function run(nextConcept: string, nextCities: string[], nextDetails: Details) {
     setEditing(false);
-    comparison.run(nextConcept, nextCities);
+    comparison.run(nextConcept, nextCities, nextDetails);
   }
 
   async function handleSignOut() {
@@ -97,6 +99,8 @@ export default function Home() {
                   setConcept={setConcept}
                   cities={cities}
                   setCities={setCities}
+                  details={details}
+                  setDetails={setDetails}
                   loading={loading}
                   onRun={run}
                 />

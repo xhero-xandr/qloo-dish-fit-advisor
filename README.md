@@ -151,6 +151,21 @@ is `generateText` with `Output.object` and a zod schema.
   0.4-0.9 s and the analysis at 8-14 s. A model call that stalls is cut off
   at 50 s (tag choice) / 60 s (analysis) and the pipeline falls back to the
   deterministic path.
+- **A description, not just a keyword, and optional details Qloo can answer:**
+  the dish field takes up to 800 characters. A long or list-like text is read
+  once (one short model call, `lib/brief.ts`) into a search phrase and the
+  dishes named, because searching a recipe ingredient by ingredient finds
+  nothing: "braised short rib, miso-glazed carrots, sesame crumble" in Lisbon
+  went from the tag "Ribs" (1 venue, weak) to "Fusion" (4 venues, moderate).
+  A short phrase is used exactly as typed, so the presets are untouched. Under
+  "Add details" the chef can set dietary needs, audience (age, gender), price
+  level and a season. Each one is applied where Qloo's data can answer it: the
+  audience goes to Qloo as `signal.demographics.*` and changes which venues
+  come back; dietary needs and price are checked per venue against the
+  dietary tags and price level Qloo lists, as numbered facts the verdict can
+  cite; the season is read by the plan only. The page says what it understood.
+  Not covered, on purpose: cost, margin and the chef's own sales (ABC/XYZ), none
+  of which Qloo knows.
 - **The tests are themselves tested (mutation testing):** `npm run mutate`
   (Stryker, about 90 s) changes the code in the 12 logic modules, one small
   change at a time (a `>` to `>=`, a dropped condition, a different

@@ -7,7 +7,7 @@ import {
   rateLimit,
   requestHasSession,
 } from "./auth.ts";
-import { validateInput } from "./input.ts";
+import { parseDetails, validateInput, type Details } from "./input.ts";
 import { CityNotFoundError, ConceptNotFoundError } from "./tags.ts";
 
 // Per client: each analysis spends shared Qloo and Gemini quota. Comparing several cities
@@ -15,7 +15,7 @@ import { CityNotFoundError, ConceptNotFoundError } from "./tags.ts";
 const ANALYSES_PER_HOUR = 30;
 
 export function createAnalyzeHandler(
-  build: (concept: string, city: string) => Promise<unknown>,
+  build: (concept: string, city: string, details?: Details) => Promise<unknown>,
 ) {
   return async function POST(request: Request) {
     if (isAuthEnabled() && !requestHasSession(request)) {
@@ -42,7 +42,7 @@ export function createAnalyzeHandler(
       );
     }
 
-    let body: { concept?: unknown; city?: unknown };
+    let body: { concept?: unknown; city?: unknown; details?: unknown };
     try {
       body = await request.json();
     } catch {
@@ -56,7 +56,7 @@ export function createAnalyzeHandler(
     if (problem) return Response.json({ error: problem }, { status: 400 });
 
     try {
-      const result = await build(concept, city);
+      const result = await build(concept, city, parseDetails(body.details));
       return Response.json(result);
     } catch (error) {
       if (

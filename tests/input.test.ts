@@ -17,13 +17,49 @@ test("empty and one-letter input is turned away before any quota is spent", () =
 });
 
 test("over-long input is rejected", () => {
-  assert.match(validateInput("a".repeat(201), "Austin") ?? "", /under 200/);
+  assert.match(validateInput("a".repeat(801), "Austin") ?? "", /under 800/);
   assert.match(validateInput("ramen", "c".repeat(101)) ?? "", /under 100/);
 });
 
-test("the length limits are inclusive: 200 and 100 characters are fine, one more is not", () => {
-  assert.equal(validateInput("a".repeat(200), "Austin"), undefined);
+test("the length limits are inclusive: 800 and 100 characters are fine, one more is not", () => {
+  assert.equal(validateInput("a".repeat(800), "Austin"), undefined);
   assert.equal(validateInput("ramen", "c".repeat(100)), undefined);
-  assert.match(validateInput("a".repeat(201), "Austin") ?? "", /under/);
+  assert.match(validateInput("a".repeat(801), "Austin") ?? "", /under/);
   assert.match(validateInput("ramen", "c".repeat(101)) ?? "", /under/);
+});
+
+test("a description may now be up to 800 characters", () => {
+  assert.equal(validateInput("a".repeat(800), "Austin"), undefined);
+  assert.match(validateInput("a".repeat(801), "Austin") ?? "", /under 800/);
+});
+
+import { parseDetails } from "../lib/input.ts";
+
+test("details keep only valid values and drop the rest", () => {
+  assert.deepEqual(
+    parseDetails({
+      dietary: ["Vegan", "Gluten free", "Paleo", 7],
+      audience: { age: ["25_to_29", "30_to_34", "teen"], gender: "female" },
+      prices: [2, 3, 9, "2"],
+      season: "  summer   weekend brunch ",
+      extra: "ignored",
+    }),
+    { dietary: ["Vegan", "Gluten free"], audience: { age: ["25_to_29", "30_to_34"], gender: "female" }, prices: [2, 3], season: "summer weekend brunch" }
+  );
+});
+
+test("details that are empty, wrong-typed or hostile come out as nothing", () => {
+  for (const raw of [undefined, null, "vegan", 5, [], {}, { dietary: "Vegan" }, { dietary: [] }, { audience: { gender: "other" } }, { prices: [0, 5] }, { season: "   " }, { season: "123" }]) {
+    assert.equal(parseDetails(raw), undefined, JSON.stringify(raw));
+  }
+});
+
+test("the season is capped at 80 characters", () => {
+  const out = parseDetails({ season: "a".repeat(200) });
+  assert.equal(out?.season?.length, 80);
+});
+
+test("only an audience gender or only ages is kept as given", () => {
+  assert.deepEqual(parseDetails({ audience: { gender: "male" } }), { audience: { gender: "male" } });
+  assert.deepEqual(parseDetails({ audience: { age: ["55_and_older"] } }), { audience: { age: ["55_and_older"] } });
 });

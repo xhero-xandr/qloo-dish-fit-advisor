@@ -133,3 +133,37 @@ test("a secondary tag says how many venues carry it, with examples when it has t
   assert.ok(t.includes('Secondary concept signal "Ramen": 2 venue(s) in Austin carry this Qloo tag.'));
   assert.ok(t.includes('Part of the concept also maps to the Qloo tag "Yakitori" (venues for it were not checked).'));
 });
+
+test("with nothing requested the facts are exactly as before", () => {
+  const plain = texts({ city: "Austin", primaryTag: tag, secondary: [], venues: [full], regionInsights: [] });
+  const withNone = texts({ city: "Austin", primaryTag: tag, secondary: [], venues: [full], regionInsights: [], requested: {} });
+  assert.deepEqual(withNone, plain);
+});
+
+test("each dietary request is answered for every venue from the options Qloo lists", () => {
+  const t = texts({ city: "x", primaryTag: tag, secondary: [], venues: [full, bare], regionInsights: [], requested: { dietary: ["Vegan", "Halal"] } });
+  assert.ok(t.includes('The chef asked for "Vegan". Venue "Fukumoto" lists it among its Qloo dietary options.'));
+  assert.ok(t.includes('The chef asked for "Halal". Venue "Fukumoto" does not list it among its Qloo dietary options.'));
+  assert.ok(t.includes('The chef asked for "Vegan". Venue "Plain" does not list it among its Qloo dietary options.'));
+});
+
+test("a price request says whether each venue with a known price is inside the range", () => {
+  const t = texts({ city: "x", primaryTag: tag, secondary: [], venues: [full, bare], regionInsights: [], requested: { prices: [1, 2] } });
+  assert.ok(t.includes('The chef asked for price level $, $$. Venue "Fukumoto" is $$$, outside that range.'));
+  assert.ok(!t.some((x) => x.includes('Venue "Plain" is')), "a venue with no price level gets no sentence");
+  const inside = texts({ city: "x", primaryTag: tag, secondary: [], venues: [full], regionInsights: [], requested: { prices: [3] } });
+  assert.ok(inside.some((x) => x.includes("$$$, inside that range")));
+});
+
+test("an audience request gives the venue's affinity for exactly those groups", () => {
+  const t = texts({ city: "x", primaryTag: tag, secondary: [], venues: [full, bare], regionInsights: [], requested: { audience: { age: ["25_to_29"], gender: "female" } } });
+  assert.ok(t.includes('The chef asked for this audience: 25–29, female. Venue "Fukumoto" audience affinity for it (Qloo, vs. average): 25–29 +0.18; female -0.05.'));
+  assert.ok(!t.some((x) => x.includes("this audience") && x.includes('"Plain"')), "no demographics, no sentence");
+});
+
+test("requested facts come after the venue facts, so the earlier numbering does not move", () => {
+  const plain = buildFacts({ city: "x", primaryTag: tag, secondary: [], venues: [full], regionInsights: [] });
+  const asked = buildFacts({ city: "x", primaryTag: tag, secondary: [], venues: [full], regionInsights: [], requested: { dietary: ["Vegan"] } });
+  assert.deepEqual(asked.slice(0, plain.length - 0).map((f) => f.id).slice(0, 7), plain.map((f) => f.id).slice(0, 7));
+  assert.equal(asked.length, plain.length + 1);
+});

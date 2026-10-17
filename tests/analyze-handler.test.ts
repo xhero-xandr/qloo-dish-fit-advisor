@@ -71,3 +71,12 @@ test("a client is limited to 30 analyses an hour, and the limit is per client", 
   assert.ok(Number(limited.headers.get("retry-after")) > 0);
   assert.equal((await ok(post({ concept: "ramen", city: "Tokyo" }, { ip: "192.0.2.8" }))).status, 200);
 });
+
+test("details are validated and passed on, and junk details are ignored", async () => {
+  let seen: unknown = "unset";
+  const handler = createAnalyzeHandler(async (_c, _y, details) => ((seen = details), {}));
+  await handler(post({ concept: "ramen", city: "Tokyo", details: { dietary: ["Vegan", "Paleo"], season: "summer" } }));
+  assert.deepEqual(seen, { dietary: ["Vegan"], season: "summer" });
+  await handler(post({ concept: "ramen", city: "Tokyo", details: "vegan please" }));
+  assert.equal(seen, undefined);
+});

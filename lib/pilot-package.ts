@@ -8,7 +8,9 @@ import {
   type QlooTag,
   type DemographicsResult,
 } from "./qloo";
+import { interpretBrief, type Brief } from "./brief";
 import { buildFacts, type Tag } from "./facts";
+import type { Details } from "./input";
 import { cacheKey, createResultCache } from "./result-cache";
 import { resolveCityQuery } from "./location";
 import { CityNotFoundError, isRateLimitError, MIN_PILOT_VENUES, resolveTagDeterministically } from "./tags";
@@ -94,6 +96,10 @@ export interface PilotPackage {
   pilotPlan: string[];
   ownerLetter: string;
   limitations: string[];
+  /** How a long description was read: the search phrase and the dishes found. Present only when it was read. */
+  brief?: Pick<Brief, "core" | "dishes">;
+  /** What the chef asked for beyond the description, as it was understood. */
+  details?: Details;
   /** Milliseconds spent per stage of this run (city check, tag choice, venues, cultural affinity, analysis). */
   timingsMs?: Record<string, number>;
   /** ISO timestamp — present only when this result was served from the short-lived cache instead of a fresh Qloo round-trip. */
@@ -131,10 +137,10 @@ const resultCache = createResultCache<PilotPackage>({
   maxEntries: 200,
 });
 
-export async function buildPilotPackage(concept: string, city: string): Promise<PilotPackage> {
+export async function buildPilotPackage(concept: string, city: string, details?: Details): Promise<PilotPackage> {
   const { data, cachedAt } = await resultCache.getOrCompute(
-    cacheKey(concept, city),
-    () => buildPilotPackageUncached(concept, city),
+    cacheKey(concept, city, details),
+    () => buildPilotPackageUncached(concept, city, details),
     // The agent was enabled but fell back (every model overloaded or out of quota): keep it only briefly.
     (result) => (result.agent?.notes.length ?? 0) > 0
   );
@@ -146,7 +152,7 @@ function shortError(error: unknown): string {
   return (error instanceof Error ? error.message : "unknown error").slice(0, 160);
 }
 
-async function buildPilotPackageUncached(concept: string, city: string): Promise<PilotPackage> {
+async function buildPilotPackageUncached(concept: string, city: string, details?: Details): Promise<PilotPackage> {
   const limitations: string[] = [];
   // What is sent to Qloo; the city as typed is still what the page and the letter show.
   const timings: Record<string, number> = {};
@@ -169,6 +175,10 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
   }
   const qlooCity = await resolveCityQuery(city, probe);
   lap("city");
+  // A long description is read into a short search phrase; a short one is used exactly as typed.
+  const brief = await interpretBrief(concept);
+  const searchConcept = brief.core;
+  lap("brief");
   const agentEnabled = isLlmConfigured();
   const agentNotes: string[] = [];
 
@@ -177,7 +187,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
   const findVenues = (tagId: string): Promise<QlooPlace[]> => {
     let lookup = venueLookups.get(tagId);
     if (!lookup) {
-      lookup = findPlacesByTags([tagId], qlooCity, 8).then((found) => found.filter(isOperating));
+      lookup = findPlacesByTags([tagId], qlooCity, 8, details?.audience).then((found) => found.filter(isOperating));
       venueLookups.set(tagId, lookup);
       lookup.catch(() => venueLookups.delete(tagId));
     }
@@ -198,7 +208,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
   let tagDecision: AgentTagDecision | undefined;
   if (agentEnabled) {
     try {
-      tagDecision = await planTagsWithAgent(concept, city, findVenues, searchTags);
+      tagDecision = await planTagsWithAgent(searchConcept, city, findVenues, searchTags);
     } catch (error) {
       if (isRateLimitError(error)) throw error;
       agentNotes.push(`Agent tag selection fell back to deterministic ranking: ${shortError(error)}`);
@@ -217,7 +227,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     // and the tag with more venues wins. Seen live: the agent anchored "Neapolitan
     // sourdough pizza" on a tag with one (Detroit-style) venue while the baseline
     // tag had four Neapolitan pizzerias.
-    const resolved = await resolveTagDeterministically(concept, findVenues, searchTags);
+    const resolved = await resolveTagDeterministically(searchConcept, findVenues, searchTags);
     if (tagDecision && agentPlaces.length > 0 && agentPlaces.length >= resolved.places.length) {
       primaryTag = { id: tagDecision.primary.id, name: tagDecision.primary.name, type: tagDecision.primary.type };
       places = agentPlaces;
@@ -241,7 +251,7 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
       places = resolved.places;
       if (places.length === 0) {
         limitations.push(
-          `Qloo found no venues in "${city}" for any of the tags related to "${concept}" (tried: ${resolved.triedTagNames.join(", ")}). The city may be misspelled, or the niche may be too narrow for this region.`
+          `Qloo found no venues in "${city}" for any of the tags related to "${searchConcept}" (tried: ${resolved.triedTagNames.join(", ")}). The city may be misspelled, or the niche may be too narrow for this region.`
         );
       }
     }
@@ -307,11 +317,15 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
       aggregate,
       regionInsights,
       culturalAffinity,
+      requested: details,
     });
     let analysis: AgentAnalysis | undefined;
     if (venues.length > 0) {
       try {
-        analysis = await synthesizeWithAgent(concept, city, facts, venues.map((v) => v.name), windows);
+        analysis = await synthesizeWithAgent(concept, city, facts, venues.map((v) => v.name), windows, {
+          dishes: brief.dishes,
+          season: details?.season,
+        });
       } catch (error) {
         agentNotes.push(`Agent analysis unavailable, showing the template plan: ${shortError(error)}`);
       }
@@ -320,8 +334,11 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     lap("analysis");
   }
 
+  // The letter and the brief name the dish in a few words, not the whole paragraph the chef typed.
+  const label = brief.interpreted ? brief.core : concept;
+
   const tastingBrief = [
-    `Tasting concept: "${concept}"`,
+    `Tasting concept: "${label}"`,
     `Atmosphere cues (from tags of taste-matched venues): ${vibeWords.length > 0 ? vibeWords.join(", ") : "not enough data"}.`,
     regionInsights.length > 0
       ? `What reviews of the ${venues.length} matched venue${venues.length === 1 ? "" : "s"} mention most: ${regionInsights.slice(0, 6).map((r) => r.keyword).join(", ")}. These are aggregated mention counts, not review text${venues.length < 3 ? ", and too few venues to speak for the whole city" : ""}.`
@@ -341,9 +358,9 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
   const locationWarning = locationMismatch(city, topPlaces[0]);
   if (locationWarning) limitations.push(locationWarning);
   const tagNames = [primaryTag.name, ...(agent?.tagDecision?.secondary ?? []).map((s) => s.name)];
-  if (places.length > 0 && !conceptMatchesTag(concept, tagNames)) {
+  if (places.length > 0 && !conceptMatchesTag(searchConcept, tagNames)) {
     limitations.push(
-      `Qloo matched "${concept}" to the tag "${primaryTag.name}", which shares no words with it. If that is not what you meant, rephrase the concept (a cuisine or dish type works best).`
+      `Qloo matched "${searchConcept}" to the tag "${primaryTag.name}", which shares no words with it. If that is not what you meant, rephrase the concept (a cuisine or dish type works best).`
     );
   }
 
@@ -354,11 +371,11 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
           ? `Direct contact (a call usually beats email — less risk of landing in spam): ${bestVenue.phone}`
           : `No direct phone number found in Qloo's data — use the venue's website instead.`,
         "",
-        `Subject: collaboration proposal — tasting night for "${concept}"`,
+        `Subject: collaboration proposal — tasting night for "${label}"`,
         "",
         `Hi,`,
         "",
-        `We're developing a concept for "${concept}" and, based on audience taste data, ${bestVenue.name} looks like one of the strongest-fit venues in ${city} — your place is close in atmosphere and taste profile (${bestVenue.vibeTags.slice(0, 3).join(", ") || "a matching niche"}).`,
+        `We're developing a concept for "${label}" and, based on audience taste data, ${bestVenue.name} looks like one of the strongest-fit venues in ${city} — your place is close in atmosphere and taste profile (${bestVenue.vibeTags.slice(0, 3).join(", ") || "a matching niche"}).`,
         "",
         `We'd like to propose a one-off tasting night at your venue: we handle the menu and service, you provide the space and your audience. For you, it's an extra draw on a slower night, with no risk or investment in a new menu.`,
         "",
@@ -383,6 +400,8 @@ async function buildPilotPackageUncached(concept: string, city: string): Promise
     pilotPlan,
     ownerLetter,
     limitations,
+    brief: brief.interpreted ? { core: brief.core, dishes: brief.dishes } : undefined,
+    details,
     timingsMs: timings,
   };
 }

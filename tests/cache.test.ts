@@ -120,3 +120,10 @@ test("when full and nothing has expired, the oldest entry is the one dropped", a
 test("the key is lower-cased on both sides", () => {
   assert.equal(cacheKey("RAMEN", "TOKYO"), "ramen::tokyo");
 });
+
+test("the same description with different details is a different analysis", () => {
+  assert.notEqual(cacheKey("ramen", "Tokyo", { dietary: ["Vegan"] }), cacheKey("ramen", "Tokyo"));
+  assert.notEqual(cacheKey("ramen", "Tokyo", { dietary: ["Vegan"] }), cacheKey("ramen", "Tokyo", { dietary: ["Halal"] }));
+  assert.equal(cacheKey("ramen", "Tokyo", { season: "summer" }), cacheKey(" Ramen ", "tokyo", { season: "summer" }));
+  assert.equal(cacheKey("ramen", "Tokyo", undefined), "ramen::tokyo", "no details leaves the key as it was");
+});

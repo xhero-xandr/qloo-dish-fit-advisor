@@ -258,3 +258,21 @@ test("a missing results block is an empty list for places and recommendations to
     restore();
   }
 });
+
+test("an audience, when given, is sent as Qloo's demographic signals and otherwise left out", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const calls = stubFetch([json({ results: { entities: [] } })]);
+  try {
+    await settle(qloo.findPlacesByTags(["t"], "Austin", 8, { age: ["25_to_29", "30_to_34"], gender: "female" }));
+    const q = calls[0].url.searchParams;
+    assert.equal(q.get("signal.demographics.age"), "25_to_29,30_to_34");
+    assert.equal(q.get("signal.demographics.gender"), "female");
+    await settle(qloo.findPlacesByTags(["t"], "Austin", 8));
+    assert.equal(calls[1].url.searchParams.has("signal.demographics.age"), false);
+    assert.equal(calls[1].url.searchParams.has("signal.demographics.gender"), false);
+    await settle(qloo.findPlacesByTags(["t"], "Austin", 8, { age: [] }));
+    assert.equal(calls[2].url.searchParams.has("signal.demographics.age"), false, "an empty list is not sent");
+  } finally {
+    restore();
+  }
+});
