@@ -2,16 +2,18 @@ import { AGE_LABELS } from "./constants";
 import { Section } from "./Section";
 import type { CityResult, Demographics } from "./types";
 
+const NO_AUDIENCE = "no audience data";
+
 function dominantAgeLabel(demo?: Demographics): string {
-  if (!demo) return "—";
+  if (!demo) return NO_AUDIENCE;
   const entries = Object.entries(demo.age ?? {});
-  if (entries.length === 0) return "—";
+  if (entries.length === 0) return NO_AUDIENCE;
   const top = entries.sort((a, b) => b[1] - a[1])[0];
   return AGE_LABELS[top[0]] ?? top[0];
 }
 
 function genderLeanLabel(demo?: Demographics): string {
-  if (!demo) return "—";
+  if (!demo) return NO_AUDIENCE;
   const lean = (demo.gender?.male ?? 0) - (demo.gender?.female ?? 0);
   if (lean > 0.1) return "skews male";
   if (lean < -0.1) return "skews female";
@@ -108,8 +110,8 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
                   <td className={`px-4 py-2.5 ${s.avgRating === maxRating && maxRating > 0 ? "font-semibold" : ""}`}>
                     {s.avgRating !== null ? `★ ${s.avgRating.toFixed(1)}` : "—"}
                   </td>
-                  <td className="px-4 py-2.5">{dominantAgeLabel(s.demo)}</td>
-                  <td className="px-4 py-2.5">{genderLeanLabel(s.demo)}</td>
+                  <td className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}>{dominantAgeLabel(s.demo)}</td>
+                  <td className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}>{genderLeanLabel(s.demo)}</td>
                 </tr>
               )
             )}

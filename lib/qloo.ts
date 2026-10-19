@@ -30,6 +30,7 @@ if (!API_KEY && process.env.NODE_ENV !== "test") {
 // configured with an 86400s read timeout specifically so a slow-but-patient
 // retry loop here never gets cut off upstream.
 const MIN_SPACING_MS = 260; // ~3.8 req/s, safely under the 5 req/s cap
+const MAX_TRANSIENT_RETRIES = 2; // dropped connections and 5xx
 const MAX_RATE_LIMIT_RETRIES = 12; // worst case ~30-40s of waiting before giving up
 let requestChain: Promise<void> = Promise.resolve();
 
@@ -71,11 +72,25 @@ async function qlooGet<T>(
       console.info(
         `[qloo] ${path} ${url.searchParams.get("filter.type") ?? ""}`,
       );
-    const res = await fetch(url, {
-      headers: { "X-Api-Key": API_KEY ?? "" },
-      cache: "no-store",
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: { "X-Api-Key": API_KEY ?? "" },
+        cache: "no-store",
+      });
+    } catch (error) {
+      // A dropped connection or timeout under load: retry before giving up.
+      if (attempt < MAX_TRANSIENT_RETRIES) {
+        await sleep(500 * (attempt + 1));
+        continue;
+      }
+      throw error;
+    }
     if (res.ok) return res.json() as Promise<T>;
+    if (res.status >= 500 && attempt < MAX_TRANSIENT_RETRIES) {
+      await sleep(500 * (attempt + 1));
+      continue;
+    }
 
     if (res.status === 429) {
       if (res.headers.get("x-month-ratelimit-remaining") === "0") {

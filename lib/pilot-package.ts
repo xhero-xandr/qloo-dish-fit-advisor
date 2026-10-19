@@ -366,6 +366,16 @@ async function buildPilotPackageUncached(
   );
 
   lap("venues");
+  const withoutAudience = venues.filter((v) => !v.demographics).length;
+  if (withoutAudience > 0) {
+    limitations.push(
+      `Qloo returned no audience data for ${withoutAudience} of ${venues.length} venues, so audience figures ${
+        withoutAudience === venues.length
+          ? "are unavailable for this city"
+          : "cover only the others"
+      }. Running the city again may fill them in.`,
+    );
+  }
   const aggregate = aggregateDemographics(venues);
   const vibeWords = Array.from(
     new Set(venues.flatMap((v) => v.vibeTags)),

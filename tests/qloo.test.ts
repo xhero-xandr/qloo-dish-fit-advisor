@@ -146,6 +146,32 @@ test("a rate limit that never clears gives up after 13 tries as a quota error", 
   }
 });
 
+test("a 5xx or a dropped connection is retried a couple of times, then succeeds", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const calls = stubFetch([
+    new Response("down", { status: 503 }),
+    new Error("socket hang up"),
+    json({ results: { tags: [{ id: "a", name: "A", type: "t" }] } }),
+  ]);
+  try {
+    assert.equal((await settle(qloo.findTags("x"))).length, 1);
+    assert.equal(calls.length, 3);
+  } finally {
+    restore();
+  }
+});
+
+test("a server error that keeps failing stops after the retries", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const calls = stubFetch([new Response("down", { status: 500 })]);
+  try {
+    await assert.rejects(settle(qloo.findTags("x")), /500 on \/v2\/tags/);
+    assert.equal(calls.length, 3);
+  } finally {
+    restore();
+  }
+});
+
 test("any other failure is a plain error carrying the status and path, and is not retried", async () => {
   mock.timers.enable({ apis: ["setTimeout"] });
   const calls = stubFetch([new Response('{"errors":[{"message":"bad"}]}', { status: 400 })]);
