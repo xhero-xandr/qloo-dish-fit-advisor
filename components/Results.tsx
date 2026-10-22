@@ -1,4 +1,5 @@
 import { BriefSummary } from "./BriefSummary";
+import { PRICE_LABEL } from "./constants";
 import { AgentPanel } from "./AgentPanel";
 import { Citations } from "./Citations";
 import { CulturalAffinityPanel } from "./CulturalAffinity";
@@ -44,20 +45,41 @@ function StepNumber({ n }: { n: number }) {
 export function Results({ result }: { result: PilotPackage }) {
   const agentPlan = result.agent?.analysis?.pilotPlan ?? [];
   const facts = new Map((result.agent?.facts ?? []).map((f) => [f.id, f]));
+  // Two branches can share a name; only the first one is the recommended venue.
+  const recommendedName = result.agent?.analysis?.recommendedVenue?.name;
+  const recommendedIndex = recommendedName
+    ? result.venues.findIndex((v) => v.name === recommendedName)
+    : -1;
+  const priceSummary = [1, 2, 3, 4]
+    .map(
+      (level) =>
+        [
+          level,
+          result.venues.filter((v) => v.priceLevel === level).length,
+        ] as const,
+    )
+    .filter(([, count]) => count > 0)
+    .map(([level, count]) => `${PRICE_LABEL[level]} × ${count}`)
+    .join(", ");
   return (
     <div className="flex flex-col gap-10">
       {(result.resolvedLocation || result.cachedAt) && (
         <div className="-mb-4 flex flex-col gap-1 text-xs text-zinc-400">
           {result.resolvedLocation && (
             <p>
-              Results for <span className="font-medium text-zinc-600 dark:text-zinc-300">{result.resolvedLocation}</span> (where Qloo
-              placed &quot;{result.city}&quot;). Not the city you meant? Add a state or country, e.g. &quot;Paris, TX&quot;.
+              Results for{" "}
+              <span className="font-medium text-zinc-600 dark:text-zinc-300">
+                {result.resolvedLocation}
+              </span>{" "}
+              (where Qloo placed &quot;{result.city}&quot;). Not the city you
+              meant? Add a state or country, e.g. &quot;Paris, TX&quot;.
             </p>
           )}
           {result.cachedAt && (
             <p>
-              From cache: analyzed {new Date(result.cachedAt).toLocaleString()}. Repeats are reused for up to 12 hours to
-              protect the shared API quotas; a new concept or city always runs fresh.
+              From cache: analyzed {new Date(result.cachedAt).toLocaleString()}.
+              Repeats are reused for up to 12 hours to protect the shared API
+              quotas; a new concept or city always runs fresh.
             </p>
           )}
         </div>
@@ -106,13 +128,23 @@ export function Results({ result }: { result: PilotPackage }) {
       )}
 
       {agentPlan.length > 0 ? (
-        <Section id="plan" title="Pilot plan" subtitle="Written by the agent from the cited Qloo facts">
+        <Section
+          id="plan"
+          title="Pilot plan"
+          subtitle="Written by the agent from the cited Qloo facts"
+        >
           <ol className="flex flex-col gap-2.5">
             {agentPlan.map((step, i) => (
-              <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+              <li
+                key={i}
+                className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300"
+              >
                 <StepNumber n={i + 1} />
                 <span>
-                  <strong className="font-medium text-zinc-900 dark:text-zinc-100">{step.when}:</strong> {step.text}
+                  <strong className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {step.when}:
+                  </strong>{" "}
+                  {step.text}
                   <Citations ids={step.facts} facts={facts} />
                 </span>
               </li>
@@ -120,10 +152,17 @@ export function Results({ result }: { result: PilotPackage }) {
           </ol>
         </Section>
       ) : (
-        <Section id="plan" title="4-week pilot plan" subtitle="Generic template — the same steps for every concept">
+        <Section
+          id="plan"
+          title="4-week pilot plan"
+          subtitle="Generic template — the same steps for every concept"
+        >
           <ol className="flex flex-col gap-2">
             {result.pilotPlan.map((step, i) => (
-              <li key={i} className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+              <li
+                key={i}
+                className="flex gap-3 text-sm text-zinc-700 dark:text-zinc-300"
+              >
                 <StepNumber n={i + 1} />
                 {step}
               </li>
@@ -132,13 +171,19 @@ export function Results({ result }: { result: PilotPackage }) {
         </Section>
       )}
 
-      <Section title="How to judge the pilot" subtitle="General practice for a one-night pilot — not derived from Qloo data">
+      <Section
+        title="How to judge the pilot"
+        subtitle="General practice for a one-night pilot — not derived from Qloo data"
+      >
         <ul className="flex flex-col gap-2.5 text-sm text-zinc-700 dark:text-zinc-300">
           {JUDGING_STEPS.map((step) => (
             <li key={step.title} className="flex gap-3">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
               <span>
-                <strong className="font-medium text-zinc-900 dark:text-zinc-100">{step.title}:</strong> {step.text}
+                <strong className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {step.title}:
+                </strong>{" "}
+                {step.text}
               </span>
             </li>
           ))}
@@ -152,24 +197,47 @@ export function Results({ result }: { result: PilotPackage }) {
             <span className="rounded-full border border-zinc-300 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
               {result.matchedTag.name}
             </span>{" "}
-            <span className="text-xs text-zinc-400">({result.matchedTag.type.replace("urn:tag:", "")})</span>
+            <span className="text-xs text-zinc-400">
+              ({result.matchedTag.type.replace("urn:tag:", "")})
+            </span>
           </p>
         </section>
       )}
 
-      <Section id="venues" title={`Candidate pilot venues`} subtitle={`${result.venues.length} real, named venues in ${result.city}`}>
+      <Section
+        id="venues"
+        title={`Candidate pilot venues`}
+        subtitle={`${result.venues.length} real, named venues in ${result.city}`}
+      >
+        {priceSummary && (
+          <p className="mb-4 text-sm text-zinc-500">
+            Price level of these venues: {priceSummary}. A reference for where
+            the dish would sit, not a price recommendation.
+          </p>
+        )}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {result.venues.map((v, i) => (
-            <VenueCard key={i} venue={v} rank={i + 1} recommended={v.name === result.agent?.analysis?.recommendedVenue?.name} />
+            <VenueCard
+              key={i}
+              venue={v}
+              rank={i + 1}
+              recommended={i === recommendedIndex}
+            />
           ))}
           {result.venues.length === 0 && (
-            <p className="text-sm text-zinc-500">No matching venues found for this city/concept.</p>
+            <p className="text-sm text-zinc-500">
+              No matching venues found for this city/concept.
+            </p>
           )}
         </div>
       </Section>
 
       {result.aggregateDemographics && (
-        <Section id="audience" title="Audience affinity profile" subtitle={`Averaged across ${result.venues.length} matched venues`}>
+        <Section
+          id="audience"
+          title="Audience affinity profile"
+          subtitle={`Averaged across ${result.venues.length} matched venues`}
+        >
           <DemographicsChart demo={result.aggregateDemographics} />
         </Section>
       )}
@@ -188,7 +256,8 @@ export function Results({ result }: { result: PilotPackage }) {
                 className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
                 title={`${r.mentions} mentions`}
               >
-                {r.keyword} <span className="text-zinc-400">× {r.mentions}</span>
+                {r.keyword}{" "}
+                <span className="text-zinc-400">× {r.mentions}</span>
               </span>
             ))}
           </div>

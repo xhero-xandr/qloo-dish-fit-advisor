@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { PRESETS, QUICK_CITIES } from "./constants";
-import {
-  AGE_GROUPS,
-  DIETARY_OPTIONS,
-  MAX_CONCEPT_LENGTH,
-  type Details,
-} from "@/lib/input";
-import { AGE_LABELS } from "./constants";
+import { DIETARY_OPTIONS, MAX_CONCEPT_LENGTH, type Details } from "@/lib/input";
 import { Button, Chip, inputClass } from "./ui";
 
 interface Props {
@@ -198,8 +192,6 @@ export function AnalyzerForm({
   );
 }
 
-const PRICES = [1, 2, 3, 4] as const;
-
 function toggle<T>(list: readonly T[] | undefined, value: T): T[] | undefined {
   const has = list?.includes(value);
   const next = has
@@ -209,16 +201,10 @@ function toggle<T>(list: readonly T[] | undefined, value: T): T[] | undefined {
 }
 
 function countSet(d: Details): number {
-  return (
-    (d.dietary?.length ?? 0) +
-    (d.audience?.age?.length ?? 0) +
-    (d.audience?.gender ? 1 : 0) +
-    (d.prices?.length ?? 0) +
-    (d.season ? 1 : 0)
-  );
+  return (d.dietary?.length ?? 0) + (d.season ? 1 : 0);
 }
 
-/** Optional requests that Qloo's data can answer: dietary needs, audience, price level; plus the season for the plan. */
+/** Optional requests: dietary needs (checked against Qloo's data) and the season (read by the plan). Audience and price level are shown as results, not asked for. */
 function DetailsFields({
   details,
   setDetails,
@@ -263,66 +249,6 @@ function DetailsFields({
                 onClick={() => update({ dietary: toggle(details.dietary, d) })}
               >
                 {d}
-              </Chip>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className={label}>Who it is for</p>
-          <p className="text-xs text-zinc-500">
-            Sent to Qloo as an audience signal, so it changes which venues come
-            back.
-          </p>
-          <div className={row}>
-            {AGE_GROUPS.map((g) => (
-              <Chip
-                key={g}
-                active={details.audience?.age?.includes(g)}
-                onClick={() => {
-                  const age = toggle(details.audience?.age, g);
-                  update({
-                    audience:
-                      age || details.audience?.gender
-                        ? { age, gender: details.audience?.gender }
-                        : undefined,
-                  });
-                }}
-              >
-                {AGE_LABELS[g]}
-              </Chip>
-            ))}
-            {(["female", "male"] as const).map((g) => (
-              <Chip
-                key={g}
-                active={details.audience?.gender === g}
-                onClick={() => {
-                  const gender = details.audience?.gender === g ? undefined : g;
-                  update({
-                    audience:
-                      details.audience?.age || gender
-                        ? { age: details.audience?.age, gender }
-                        : undefined,
-                  });
-                }}
-              >
-                {g === "female" ? "Women" : "Men"}
-              </Chip>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className={label}>Price level</p>
-          <p className="text-xs text-zinc-500">
-            Compared with each venue&apos;s own price level.
-          </p>
-          <div className={row}>
-            {PRICES.map((p) => (
-              <Chip
-                key={p}
-                active={details.prices?.includes(p)}
-                onClick={() => update({ prices: toggle(details.prices, p) })}
-              >
-                {"$".repeat(p)}
               </Chip>
             ))}
           </div>
