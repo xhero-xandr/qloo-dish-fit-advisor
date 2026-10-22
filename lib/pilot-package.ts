@@ -36,6 +36,7 @@ import {
   isOperating,
   locationMismatch,
   toCulturalSignalItems,
+  rankTagsForPlaceMatching,
 } from "./venues";
 import { weekWindows, type WeekWindows } from "./hours";
 import { isLlmConfigured } from "./llm";
@@ -95,11 +96,24 @@ export interface AgentOutput {
   notes: string[];
 }
 
+export interface TagCandidate {
+  id: string;
+  name: string;
+  type: string;
+  /** Operating venues in the city, when this run looked them up. */
+  venueCount?: number;
+}
+
 export interface PilotPackage {
   concept: string;
   city: string;
   resolvedLocation?: string;
   matchedTag?: { id: string; name: string; type: string };
+  /** Who picked the category, and the other Qloo categories found for the description, to choose from. */
+  tagChoice?: {
+    chosenBy: "agent" | "rules" | "you";
+    candidates: TagCandidate[];
+  };
   venues: VenueCandidate[];
   aggregateDemographics?: DemographicsResult;
   regionInsights: RegionInsight[];
@@ -173,6 +187,53 @@ export async function buildPilotPackage(
   return cachedAt ? { ...data, cachedAt } : data;
 }
 
+/** Other categories found while reading the description: those with venues in the city first, at most eight. */
+const CHECKED_CANDIDATES = 3;
+
+const PLACE_TAG_TYPES = new Set([
+  "urn:tag:category:place",
+  "urn:tag:genre:place",
+  "urn:tag:cuisine:qloo",
+  "urn:tag:culinary_style:qloo",
+  "urn:tag:genre_category:qloo",
+]);
+
+async function collectTagCandidates(
+  searches: Map<string, Promise<QlooTag[]>>,
+  lookups: Map<string, Promise<QlooPlace[]>>,
+  exceptId: string,
+  exceptName: string,
+): Promise<TagCandidate[]> {
+  const found = await Promise.allSettled(searches.values());
+  const counts = new Map<string, number>();
+  for (const [id, lookup] of lookups) {
+    const places = await lookup.catch(() => undefined);
+    if (places) counts.set(id, places.length);
+  }
+  // Only categories venues are tagged with; one per name (Qloo has e.g. several "Banh Mi" tags).
+  const ranked = rankTagsForPlaceMatching(
+    found.flatMap((r) => (r.status === "fulfilled" ? r.value : [])),
+  ).filter((t) => PLACE_TAG_TYPES.has(t.type));
+  const byName = new Map<string, TagCandidate>();
+  for (const t of ranked) {
+    const name = t.name.trim().toLowerCase();
+    if (t.id === exceptId || byName.has(name)) continue;
+    byName.set(name, {
+      id: t.id,
+      name: t.name,
+      type: t.type,
+      ...(counts.has(t.id) ? { venueCount: counts.get(t.id) } : {}),
+    });
+  }
+  // Known to have venues first (most first), then not checked, then known to have none.
+  const rank = (c: TagCandidate) =>
+    c.venueCount === undefined ? 0 : c.venueCount > 0 ? c.venueCount + 1 : -1;
+  return [...byName.values()]
+    .filter((c) => c.name.toLowerCase() !== exceptName.trim().toLowerCase())
+    .sort((a, b) => rank(b) - rank(a))
+    .slice(0, 8);
+}
+
 function shortError(error: unknown): string {
   return (error instanceof Error ? error.message : "unknown error").slice(
     0,
@@ -240,7 +301,8 @@ async function buildPilotPackageUncached(
   };
 
   let tagDecision: AgentTagDecision | undefined;
-  if (agentEnabled) {
+  const chosenTag = details?.tag;
+  if (agentEnabled && !chosenTag) {
     try {
       tagDecision = await planTagsWithAgent(
         searchConcept,
@@ -261,7 +323,21 @@ async function buildPilotPackageUncached(
   const agentPlaces = tagDecision
     ? await findVenues(tagDecision.primary.id)
     : [];
-  if (tagDecision && agentPlaces.length >= MIN_PILOT_VENUES) {
+  if (chosenTag) {
+    // The chef picked the category; it is used as given, even with few venues, and said so.
+    primaryTag = {
+      id: chosenTag.id,
+      name: chosenTag.name,
+      type: chosenTag.id.slice(0, chosenTag.id.lastIndexOf(":")),
+    };
+    places = await findVenues(chosenTag.id);
+    // Still search the description, so other categories stay on offer.
+    await searchTags(searchConcept).catch(() => []);
+    if (places.length === 0)
+      limitations.push(
+        `Qloo found no operating venues in "${city}" for the category you chose ("${chosenTag.name}"). Try another category or let the agent choose.`,
+      );
+  } else if (tagDecision && agentPlaces.length >= MIN_PILOT_VENUES) {
     primaryTag = {
       id: tagDecision.primary.id,
       name: tagDecision.primary.name,
@@ -319,7 +395,33 @@ async function buildPilotPackageUncached(
     }
   }
 
+  // Check the venues of the top few unchecked categories, so none is offered as a dead end.
+  // Costs up to CHECKED_CANDIDATES more Qloo requests; each is shared with any later use.
+  const unchecked = (
+    await collectTagCandidates(
+      tagSearches,
+      venueLookups,
+      primaryTag.id,
+      primaryTag.name,
+    )
+  )
+    .filter((c) => c.venueCount === undefined)
+    .slice(0, CHECKED_CANDIDATES);
+  await Promise.allSettled(unchecked.map((c) => findVenues(c.id)));
   lap("tags");
+  const tagChoice = {
+    chosenBy: chosenTag
+      ? ("you" as const)
+      : tagDecision && !tagDecision.override
+        ? ("agent" as const)
+        : ("rules" as const),
+    candidates: await collectTagCandidates(
+      tagSearches,
+      venueLookups,
+      primaryTag.id,
+      primaryTag.name,
+    ),
+  };
 
   // The insights API does not return these ordered by relevance to the tag,
   // so use rating as a proxy for venue quality until a sharper signal is wired in.
@@ -532,6 +634,7 @@ async function buildPilotPackageUncached(
     city,
     resolvedLocation: describeResolvedLocation(topPlaces[0]),
     matchedTag: places.length > 0 ? primaryTag : undefined,
+    tagChoice,
     venues,
     aggregateDemographics: aggregate,
     regionInsights,

@@ -1,4 +1,4 @@
-import { AGE_LABELS } from "./constants";
+import { AGE_LABELS, PRICE_LABEL } from "./constants";
 import { Section } from "./Section";
 import type { CityResult, Demographics } from "./types";
 
@@ -26,6 +26,8 @@ interface CityStats {
   venueCount: number;
   avgRating: number | null;
   demo?: Demographics;
+  /** Price levels of the matched venues, e.g. "$ ×3, $$ ×1". */
+  prices: string;
   /** Simple composite used only to pick a headline city — more venues and higher ratings both count. */
   fitScore: number;
 }
@@ -41,6 +43,11 @@ function computeStats(results: CityResult[]): CityStats[] {
       venueCount: venues.length,
       avgRating,
       demo: r.data?.aggregateDemographics,
+      prices: [1, 2, 3, 4]
+        .map((level) => [level, venues.filter((v) => v.priceLevel === level).length] as const)
+        .filter(([, n]) => n > 0)
+        .map(([level, n]) => `${PRICE_LABEL[level]} ×${n}`)
+        .join(", "),
       fitScore: venues.length * 2 + (avgRating ?? 0),
     };
   });
@@ -48,7 +55,8 @@ function computeStats(results: CityResult[]): CityStats[] {
 
 export function ComparisonSummary({ results }: { results: CityResult[] }) {
   const stats = computeStats(results);
-  const usable = stats.filter((s) => !s.error);
+  // A city with no matching venues cannot be the best place for a pilot.
+  const usable = stats.filter((s) => !s.error && s.venueCount > 0);
   const winner = usable.length > 0 ? [...usable].sort((a, b) => b.fitScore - a.fitScore)[0] : undefined;
   const maxVenues = Math.max(0, ...stats.map((s) => s.venueCount));
   const maxRating = Math.max(0, ...stats.map((s) => s.avgRating ?? 0));
@@ -81,6 +89,7 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
               <th className="px-4 py-2.5 font-medium">City</th>
               <th className="px-4 py-2.5 font-medium">Venues found</th>
               <th className="px-4 py-2.5 font-medium">Avg rating</th>
+              <th className="px-4 py-2.5 font-medium">Price level</th>
               <th className="px-4 py-2.5 font-medium">Dominant age group</th>
               <th className="px-4 py-2.5 font-medium">Gender skew</th>
             </tr>
@@ -90,7 +99,7 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
               s.error ? (
                 <tr key={s.city}>
                   <td className="px-4 py-2.5 font-medium">{s.city}</td>
-                  <td colSpan={4} className="px-4 py-2.5 text-xs text-red-500" title={s.error}>
+                  <td colSpan={5} className="px-4 py-2.5 text-xs text-red-500" title={s.error}>
                     ⚠ {s.error}
                   </td>
                 </tr>
@@ -110,6 +119,7 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
                   <td className={`px-4 py-2.5 ${s.avgRating === maxRating && maxRating > 0 ? "font-semibold" : ""}`}>
                     {s.avgRating !== null ? `★ ${s.avgRating.toFixed(1)}` : "—"}
                   </td>
+                  <td className={`px-4 py-2.5 ${s.prices ? "" : "text-zinc-500"}`}>{s.prices || "not listed"}</td>
                   <td className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}>{dominantAgeLabel(s.demo)}</td>
                   <td className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}>{genderLeanLabel(s.demo)}</td>
                 </tr>

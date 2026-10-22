@@ -63,3 +63,19 @@ test("only an audience gender or only ages is kept as given", () => {
   assert.deepEqual(parseDetails({ audience: { gender: "male" } }), { audience: { gender: "male" } });
   assert.deepEqual(parseDetails({ audience: { age: ["55_and_older"] } }), { audience: { age: ["55_and_older"] } });
 });
+
+test("a chosen category is kept only when it looks like a Qloo tag with a name", () => {
+  assert.deepEqual(parseDetails({ tag: { id: "urn:tag:cuisine:qloo:banh_mi", name: "  Banh   Mi " } }), {
+    tag: { id: "urn:tag:cuisine:qloo:banh_mi", name: "Banh Mi" },
+  });
+  for (const tag of [
+    { id: "urn:tag:cuisine:qloo:banh_mi" },
+    { id: "urn:tag:cuisine:qloo:banh_mi", name: "" },
+    { id: "banh_mi", name: "Banh Mi" },
+    { id: "urn:tag:cuisine", name: "Banh Mi" },
+    { id: "urn:tag:cuisine:qloo:Banh Mi", name: "Banh Mi" },
+    { id: "urn:tag:cuisine:qloo:x", name: "x".repeat(81) },
+    "urn:tag:cuisine:qloo:banh_mi",
+  ])
+    assert.equal(parseDetails({ tag }), undefined, JSON.stringify(tag));
+});

@@ -229,7 +229,20 @@ export default function Home() {
                         </p>
                         <hr className="my-4" />
                       </div>
-                      <Results result={active.data} />
+                      <Results
+                        result={active.data}
+                        cityCount={requested.length}
+                        busy={loading}
+                        onRetag={(tag) => {
+                          const rest = { ...(active.data?.details ?? {}) };
+                          delete rest.tag;
+                          run(
+                            active.data!.concept,
+                            requested,
+                            tag ? { ...rest, tag } : rest,
+                          );
+                        }}
+                      />
                     </>
                   )}
                 </div>

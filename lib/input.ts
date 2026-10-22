@@ -37,7 +37,12 @@ export interface Details {
   prices?: (1 | 2 | 3 | 4)[];
   /** Season or daypart, in the chef's words ("summer", "weekend brunch"). Read by the analysis, not by Qloo. */
   season?: string;
+  /** A Qloo category the chef picked from the candidates of an earlier run; replaces the agent's choice. */
+  tag?: { id: string; name: string };
 }
+
+const TAG_ID = /^urn:tag:[a-z0-9_]+(:[a-z0-9_]+)+$/;
+const MAX_TAG_NAME_LENGTH = 80;
 
 function onlyFrom<T>(value: unknown, allowed: readonly T[]): T[] | undefined {
   if (!Array.isArray(value)) return undefined;
@@ -71,6 +76,20 @@ export function parseDetails(raw: unknown): Details | undefined {
       ? r.season.replace(/\s+/g, " ").trim().slice(0, MAX_SEASON_LENGTH)
       : "";
   if (season && HAS_WORD.test(season)) details.season = season;
+  const t =
+    typeof r.tag === "object" && r.tag !== null
+      ? (r.tag as Record<string, unknown>)
+      : {};
+  const tagName =
+    typeof t.name === "string" ? t.name.replace(/\s+/g, " ").trim() : "";
+  if (
+    typeof t.id === "string" &&
+    t.id.length <= 120 &&
+    TAG_ID.test(t.id) &&
+    tagName &&
+    tagName.length <= MAX_TAG_NAME_LENGTH
+  )
+    details.tag = { id: t.id, name: tagName };
   return Object.keys(details).length > 0 ? details : undefined;
 }
 

@@ -17,6 +17,8 @@ export function BriefSummary({ result }: { result: PilotPackage }) {
     asked.push(details.audience.gender === "female" ? "women" : "men");
   if (details?.prices) asked.push(`price ${PRICE(details.prices)}`);
   if (details?.season) asked.push(`timing: ${details.season}`);
+  // A chosen category is shown by TagChoice; with nothing else to say, say nothing.
+  if (!brief && asked.length === 0) return null;
   return (
     <section className="no-print rounded-xl border border-zinc-200 bg-white/70 px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/40">
       <p className="text-xs font-semibold uppercase tracking-widest text-accent-700 dark:text-accent-400">

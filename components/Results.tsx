@@ -1,4 +1,5 @@
 import { BriefSummary } from "./BriefSummary";
+import { TagChoice } from "./TagChoice";
 import { PRICE_LABEL } from "./constants";
 import { AgentPanel } from "./AgentPanel";
 import { Citations } from "./Citations";
@@ -42,7 +43,18 @@ function StepNumber({ n }: { n: number }) {
   );
 }
 
-export function Results({ result }: { result: PilotPackage }) {
+export function Results({
+  result,
+  cityCount = 1,
+  busy = false,
+  onRetag,
+}: {
+  result: PilotPackage;
+  cityCount?: number;
+  busy?: boolean;
+  /** Re-run with a category the chef picked, or with none to let the agent choose again. */
+  onRetag?: (tag?: { id: string; name: string }) => void;
+}) {
   const agentPlan = result.agent?.analysis?.pilotPlan ?? [];
   const facts = new Map((result.agent?.facts ?? []).map((f) => [f.id, f]));
   // Two branches can share a name; only the first one is the recommended venue.
@@ -96,6 +108,12 @@ export function Results({ result }: { result: PilotPackage }) {
       )}
 
       <BriefSummary result={result} />
+      <TagChoice
+        result={result}
+        cityCount={cityCount}
+        busy={busy}
+        onRetag={onRetag}
+      />
 
       <nav
         aria-label="Sections"
@@ -189,20 +207,6 @@ export function Results({ result }: { result: PilotPackage }) {
           ))}
         </ul>
       </Section>
-
-      {result.matchedTag && (
-        <section>
-          <p className="text-sm text-zinc-500">
-            Matched Qloo tag:{" "}
-            <span className="rounded-full border border-zinc-300 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
-              {result.matchedTag.name}
-            </span>{" "}
-            <span className="text-xs text-zinc-400">
-              ({result.matchedTag.type.replace("urn:tag:", "")})
-            </span>
-          </p>
-        </section>
-      )}
 
       <Section
         id="venues"
