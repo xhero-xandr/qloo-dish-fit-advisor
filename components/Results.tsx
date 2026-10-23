@@ -208,6 +208,7 @@ export function Results({
 
       <div id="venues" className={`scroll-mt-16 ${group("venues")}`}>
         <Section
+          plain
           title="Candidate pilot venues"
           subtitle={`${result.venues.length} real, named venues in ${result.city}`}
         >

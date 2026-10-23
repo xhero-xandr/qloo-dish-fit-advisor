@@ -52,7 +52,7 @@ export function CulturalAffinityPanel({
   data: CulturalAffinityData;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+    <div className="flex flex-col gap-4">
       <SignalRow
         title="This audience also tends toward these brands"
         items={data.brands}

@@ -1,6 +1,4 @@
-import { Button } from "./ui";
-
-/** The form folded into one line once results exist, so the results start near the top. */
+/** What is being tested, above the report, with the way back to the steps. */
 export function RunSummary({
   concept,
   cities,
@@ -11,21 +9,27 @@ export function RunSummary({
   onEdit: () => void;
 }) {
   return (
-    <div className="no-print flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/80">
-      <div className="min-w-0 text-sm">
-        <p className="line-clamp-2 font-medium" title={concept}>
-          {concept}
-        </p>
-        <p className="text-zinc-500">{cities.join(", ")}</p>
-      </div>
-      <Button
+    <div className="no-print flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+      <p className="min-w-0 text-sm text-zinc-500">
+        Testing{" "}
+        <span
+          className="font-semibold text-zinc-900 dark:text-zinc-100"
+          title={concept}
+        >
+          {concept.length > 80 ? `${concept.slice(0, 80)}…` : concept}
+        </span>{" "}
+        in{" "}
+        <span className="font-medium text-zinc-900 dark:text-zinc-100">
+          {cities.join(", ")}
+        </span>
+      </p>
+      <button
         type="button"
-        variant="secondary"
         onClick={onEdit}
-        className="px-3 py-1.5 text-xs"
+        className="min-h-[40px] rounded-xl border border-zinc-300 bg-white px-4 text-sm font-medium hover:border-accent-400 dark:border-zinc-700 dark:bg-zinc-900"
       >
-        Edit or run another
-      </Button>
+        Change dish or cities
+      </button>
     </div>
   );
 }

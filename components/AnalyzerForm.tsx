@@ -72,43 +72,33 @@ export function AnalyzerForm({
   }
 
   return (
-    <div className="no-print">
-      <div className="mb-5">
-        <p className="mb-1.5 text-xs font-medium text-zinc-500">
-          Start with an example
-        </p>
-        <ul className="grid grid-cols-1 gap-1.5">
-          {PRESETS.map((p) => (
-            <li key={p.concept}>
-              <button
-                type="button"
-                onClick={() => applyPreset(p)}
-                disabled={loading}
-                className="flex w-full items-baseline justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-1.5 text-left text-sm text-zinc-700 transition hover:border-accent-400 hover:text-accent-700 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:text-accent-300"
-              >
-                <span className="min-w-0 truncate">{p.concept}</span>
-                <span className="shrink-0 text-xs text-zinc-500">
-                  {p.city.split(",")[0]}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form
+      onSubmit={handleSubmit}
+      className="no-print grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start"
+    >
+      <section className="flex min-w-0 flex-col gap-5">
         <div>
-          <label htmlFor="concept" className="block text-sm font-medium">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-700 dark:text-accent-400">
+            Step 1 · Your menu
+          </p>
+          <h1 className="mt-1.5 text-3xl font-semibold leading-tight tracking-tight">
+            What do you want to test?
+          </h1>
+          <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">
+            A dish, a cuisine, or a full description with ingredients and
+            dishes. The agent reads it into what kind of food it is and finds
+            the venues and guests that already like it.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="concept" className="block font-medium">
             Dish or menu
           </label>
-          <p className="mb-1.5 text-xs text-zinc-500">
-            A cuisine, a dish, or a full description with ingredients and
-            dishes. The agent reads it into what kind of food it is.
-          </p>
           <textarea
             id="concept"
-            className={`${inputClass} resize-y`}
-            rows={3}
+            className={`${inputClass} mt-2 resize-y text-base`}
+            rows={5}
             placeholder="e.g. izakaya-style small plates, or: braised short rib with miso-glazed carrots and sesame crumble, a modern bistro dish"
             value={concept}
             maxLength={MAX_CONCEPT_LENGTH}
@@ -129,66 +119,93 @@ export function AnalyzerForm({
         <DetailsFields details={details} setDetails={setDetails} />
 
         <div>
-          <label htmlFor="city" className="block text-sm font-medium">
-            Cities to pilot in
-          </label>
-          <p className="mb-1.5 text-xs text-zinc-500">
-            Add one, or several to compare them side by side.
+          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            Or start with an example
           </p>
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-sm focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-200 dark:border-zinc-700 dark:bg-zinc-900 dark:focus-within:ring-accent-900">
-            {cities.map((c) => (
-              <span
-                key={c}
-                className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
-              >
-                {c}
+          <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {PRESETS.map((p) => (
+              <li key={p.concept} className="min-w-0">
                 <button
                   type="button"
-                  onClick={() => removeCity(c)}
-                  className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  aria-label={`Remove ${c}`}
+                  onClick={() => applyPreset(p)}
+                  disabled={loading}
+                  className="flex w-full items-baseline justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-left text-sm text-zinc-700 transition hover:border-accent-400 hover:text-accent-700 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:text-accent-300"
                 >
-                  ×
+                  <span className="min-w-0 truncate">{p.concept}</span>
+                  <span className="shrink-0 text-xs text-zinc-500">
+                    {p.city.split(",")[0]}
+                  </span>
                 </button>
-              </span>
+              </li>
             ))}
-            <input
-              id="city"
-              className="min-w-[140px] flex-1 bg-transparent px-1 py-1.5 text-sm outline-none"
-              placeholder={
-                cities.length === 0
-                  ? "Type a city and press Enter…"
-                  : "Add another…"
-              }
-              value={draft}
-              maxLength={100}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={() => addCity(draft)}
-            />
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {QUICK_CITIES.map((c) => (
-              <Chip
-                key={c}
-                active={cities.includes(c)}
-                onClick={() => toggleQuickCity(c)}
-              >
-                + {c}
-              </Chip>
-            ))}
-          </div>
+          </ul>
         </div>
+      </section>
 
-        <Button type="submit" disabled={loading} className="w-full">
+      <aside className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-700 dark:text-accent-400">
+            Step 2 · Where
+          </p>
+          <h2 className="mt-1.5 text-xl font-semibold">
+            <label htmlFor="city">Cities to test in</label>
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Add one, or several to compare them side by side.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-sm focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-200 dark:border-zinc-700 dark:bg-zinc-900 dark:focus-within:ring-accent-900">
+          {cities.map((c) => (
+            <span
+              key={c}
+              className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+            >
+              {c}
+              <button
+                type="button"
+                onClick={() => removeCity(c)}
+                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                aria-label={`Remove ${c}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            id="city"
+            className="min-w-[140px] flex-1 bg-transparent px-1 py-1.5 text-sm outline-none"
+            placeholder={
+              cities.length === 0
+                ? "Type a city and press Enter…"
+                : "Add another…"
+            }
+            value={draft}
+            maxLength={100}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={() => addCity(draft)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {QUICK_CITIES.map((c) => (
+            <Chip
+              key={c}
+              active={cities.includes(c)}
+              onClick={() => toggleQuickCity(c)}
+            >
+              + {c}
+            </Chip>
+          ))}
+        </div>
+        <Button type="submit" disabled={loading} className="w-full text-base">
           {loading
             ? "Analyzing…"
             : cities.length > 1
               ? `Compare ${cities.length} cities`
               : "Analyze"}
         </Button>
-      </form>
-    </div>
+      </aside>
+    </form>
   );
 }
 

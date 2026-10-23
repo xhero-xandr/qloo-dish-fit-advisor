@@ -61,7 +61,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen text-zinc-900 dark:text-zinc-50">
-      <main className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10 print:max-w-none print:p-0">
+      <main className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8 print:max-w-none print:p-0">
         <AppBar
           signedIn={auth === "ok" && authRequired}
           onSignOut={handleSignOut}
@@ -91,14 +91,18 @@ export default function Home() {
         )}
 
         {auth === "ok" && (
-          <div className="grid gap-8 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start print:block">
-            <aside className="no-print lg:[@media(min-height:860px)]:sticky lg:[@media(min-height:860px)]:top-6">
-              {/* The form only sticks on tall screens; on short ones it scrolls with the page, so there is no scroll box inside the page. */}
-              {/* On a phone the form folds into one line once results exist; on a wide screen it stays beside them. */}
-              <div className={showForm ? "" : "hidden lg:block"}>
-                <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent-700 dark:text-accent-400">
-                  New analysis
-                </p>
+          <div className="flex flex-col gap-8">
+            {showForm ? (
+              <>
+                {results.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="no-print self-start text-sm font-medium text-accent-700 underline underline-offset-2 dark:text-accent-400"
+                  >
+                    ← Back to the results
+                  </button>
+                )}
                 <AnalyzerForm
                   concept={concept}
                   setConcept={setConcept}
@@ -109,118 +113,114 @@ export default function Home() {
                   loading={loading}
                   onRun={run}
                 />
-              </div>
-              {!showForm && (
-                <div className="lg:hidden">
-                  <RunSummary
-                    concept={concept}
-                    cities={requested}
-                    onEdit={() => setEditing(true)}
-                  />
-                </div>
-              )}
-            </aside>
-
-            <div className="min-w-0">
-              {results.length === 0 && !loading && (
-                <>
-                  <Hero compact>
+                {results.length === 0 && (
+                  <div className="no-print flex flex-col gap-4">
+                    <EmptyState />
                     <MethodologyDetails />
-                  </Hero>
-                  <EmptyState />
-                </>
-              )}
-              {loading && results.length === 0 && (
-                <LoadingSkeleton cities={requested.length || 1} />
-              )}
-
-              {results.length > 0 && (
-                <div
-                  ref={resultsRef}
-                  className="print-surface fade-up flex scroll-mt-4 flex-col gap-10"
-                >
-                  {loading && (
-                    <p
-                      role="status"
-                      aria-live="polite"
-                      className="no-print rounded-xl border border-accent-200 bg-accent-50 px-4 py-2.5 text-sm text-accent-900 dark:border-accent-900 dark:bg-accent-950/60 dark:text-accent-200"
-                    >
-                      {results.length} of {requested.length}{" "}
-                      {requested.length === 1 ? "city" : "cities"} ready — the
-                      rest are still running and will appear here.
-                    </p>
-                  )}
-
-                  {results.length > 1 && !loading && (
-                    <ComparisonSummary results={results} />
-                  )}
-
-                  {(results.length > 1 || requested.length > 1) && (
-                    <div className="no-print flex flex-wrap gap-2 border-b border-zinc-200 pb-3 dark:border-zinc-800">
-                      {results.map((r) => (
-                        <button
-                          key={r.city}
-                          onClick={() => setActiveCity(r.city)}
-                          className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                            activeCity === r.city
-                              ? "bg-accent-600 text-white"
-                              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                          }`}
-                        >
-                          {r.city}
-                          {r.error && (
-                            <span
-                              className="ml-1"
-                              title={r.error}
-                              aria-label="failed"
-                            >
-                              ⚠
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {active?.error && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-                      <p>{active.error}</p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={loading}
-                        onClick={() => comparison.retry(active.city)}
-                        className="px-3 py-1.5 text-xs"
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <RunSummary
+                  concept={concept}
+                  cities={requested}
+                  onEdit={() => {
+                    setEditing(true);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                />
+                {loading && results.length === 0 && (
+                  <LoadingSkeleton cities={requested.length || 1} />
+                )}
+                {results.length > 0 && (
+                  <div
+                    ref={resultsRef}
+                    className="print-surface fade-up flex scroll-mt-4 flex-col gap-10"
+                  >
+                    {loading && (
+                      <p
+                        role="status"
+                        aria-live="polite"
+                        className="no-print rounded-xl border border-accent-200 bg-accent-50 px-4 py-2.5 text-sm text-accent-900 dark:border-accent-900 dark:bg-accent-950/60 dark:text-accent-200"
                       >
-                        Try {active.city} again
-                      </Button>
-                    </div>
-                  )}
-                  {active?.data && (
-                    <>
-                      <Results
-                        result={active.data}
-                        cityCount={requested.length}
-                        busy={loading}
-                        onEditMenu={() => {
-                          setEditing(true);
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                        onRetag={(tag) => {
-                          const rest = { ...(active.data?.details ?? {}) };
-                          delete rest.tag;
-                          run(
-                            active.data!.concept,
-                            requested,
-                            tag ? { ...rest, tag } : rest,
-                          );
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                        {results.length} of {requested.length}{" "}
+                        {requested.length === 1 ? "city" : "cities"} ready — the
+                        rest are still running and will appear here.
+                      </p>
+                    )}
+
+                    {results.length > 1 && !loading && (
+                      <ComparisonSummary results={results} />
+                    )}
+
+                    {(results.length > 1 || requested.length > 1) && (
+                      <div className="no-print flex flex-wrap gap-2 border-b border-zinc-200 pb-3 dark:border-zinc-800">
+                        {results.map((r) => (
+                          <button
+                            key={r.city}
+                            onClick={() => setActiveCity(r.city)}
+                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                              activeCity === r.city
+                                ? "bg-accent-600 text-white"
+                                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            }`}
+                          >
+                            {r.city}
+                            {r.error && (
+                              <span
+                                className="ml-1"
+                                title={r.error}
+                                aria-label="failed"
+                              >
+                                ⚠
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {active?.error && (
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+                        <p>{active.error}</p>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={loading}
+                          onClick={() => comparison.retry(active.city)}
+                          className="px-3 py-1.5 text-xs"
+                        >
+                          Try {active.city} again
+                        </Button>
+                      </div>
+                    )}
+                    {active?.data && (
+                      <>
+                        <Results
+                          result={active.data}
+                          cityCount={requested.length}
+                          busy={loading}
+                          onEditMenu={() => {
+                            setEditing(true);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          onRetag={(tag) => {
+                            const rest = { ...(active.data?.details ?? {}) };
+                            delete rest.tag;
+                            run(
+                              active.data!.concept,
+                              requested,
+                              tag ? { ...rest, tag } : rest,
+                            );
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </main>
