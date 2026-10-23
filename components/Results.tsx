@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { ownerLetterFor } from "@/lib/letter";
 import { AgentPanel } from "./AgentPanel";
+import { Explainers } from "./Explainers";
 import { AudienceSection } from "./AudienceSection";
 import { BriefSummary } from "./BriefSummary";
 import { Citations } from "./Citations";
@@ -74,6 +76,18 @@ export function Results({
     ? result.venues.findIndex((v) => v.name === recommendedName)
     : -1;
   const prices = priceSummary(result);
+  // The chef may pick another venue than the agent's; the letter follows that choice.
+  const [picked, setPicked] = useState<number>();
+  const chosenIndex = picked ?? (recommendedIndex >= 0 ? recommendedIndex : 0);
+  const chosenVenue = result.venues[chosenIndex];
+  const letter =
+    picked === undefined || picked === recommendedIndex
+      ? result.ownerLetter
+      : ownerLetterFor(
+          chosenVenue,
+          result.dishLabel ?? result.concept,
+          result.city,
+        );
 
   // On a phone one group shows at a time (bottom tabs); on a wide screen and in print, all of them.
   const group = (name: ReportTab) =>
@@ -99,7 +113,7 @@ export function Results({
       </nav>
 
       <div id="verdict" className={`scroll-mt-16 ${group("verdict")}`}>
-        <ReportHeader result={result} />
+        <ReportHeader result={result} letter={letter} />
         {result.limitations.length > 0 && (
           <section className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
             <strong>Limitations</strong>
@@ -163,7 +177,14 @@ export function Results({
                 : ""
             }`}
           >
-            <KeywordBars items={result.regionInsights} />
+            <div className="flex flex-col gap-4">
+              <KeywordBars items={result.regionInsights} />
+              <Explainers
+                shows="The words and dishes that come up most in reviews of these venues, counted across all of them."
+                use="See what guests already value or notice: a dish they order, a vegetarian option, the wait. Answer it in your tasting menu and in how you run the night."
+                notMean="It is not a rating or a mood: “wait time” may be a complaint. And these are reviews of the venues, not of your dish."
+              />
+            </div>
           </Section>
         )}
         {result.culturalAffinity && (
@@ -172,7 +193,14 @@ export function Results({
               title="Beyond food: what these guests also like"
               subtitle="Ideas for promotion and collaborations — Qloo's cross-domain signal for the audience of the matched venues"
             >
-              <CulturalAffinityPanel data={result.culturalAffinity} />
+              <div className="flex flex-col gap-4">
+                <CulturalAffinityPanel data={result.culturalAffinity} />
+                <Explainers
+                  shows="Brands, TV shows, music and podcasts that people who like these venues like more than the average person, from Qloo's taste data across categories."
+                  use="Ideas for the evening and its promotion: a playlist, a local brand to partner with, the shows and podcasts to reference or advertise near."
+                  notMean="It does not show that these guests will buy your dish, and the list is not ranked by how popular each item is."
+                />
+              </div>
             </Section>
           </div>
         )}
@@ -196,6 +224,8 @@ export function Results({
                 venue={v}
                 rank={i + 1}
                 recommended={i === recommendedIndex}
+                chosen={i === chosenIndex}
+                onChoose={() => setPicked(i)}
               />
             ))}
             {result.venues.length === 0 && (
@@ -268,8 +298,15 @@ export function Results({
           <TextBlock text={result.tastingBrief} />
         </Section>
         <div id="letter" className="no-print scroll-mt-16">
-          <Section title="Venue owner outreach letter">
-            <TextBlock text={result.ownerLetter} highlighted copyable />
+          <Section
+            title="Venue owner outreach letter"
+            subtitle={
+              chosenVenue
+                ? `For ${chosenVenue.name}${chosenIndex === recommendedIndex ? ", the agent's pick" : ", the venue you chose"}. Choose another venue under Venues to rewrite it.`
+                : undefined
+            }
+          >
+            <TextBlock text={letter} highlighted copyable />
           </Section>
         </div>
       </div>

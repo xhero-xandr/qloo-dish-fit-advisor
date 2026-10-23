@@ -3,11 +3,21 @@
 
 import { AGE_BUCKETS } from "./facts.ts";
 import { geoMatches } from "./location.ts";
-import type { CrossDomainEntity, DemographicsResult, QlooPlace } from "./qloo.ts";
-import type { CulturalSignalItem, RegionInsight, VenueCandidate } from "./pilot-package.ts";
+import type {
+  CrossDomainEntity,
+  DemographicsResult,
+  QlooPlace,
+} from "./qloo.ts";
+import type {
+  CulturalSignalItem,
+  RegionInsight,
+  VenueCandidate,
+} from "./pilot-package.ts";
 
 /** Average per-venue affinity scores into one aggregate audience profile for the hero chart. */
-export function aggregateDemographics(venues: VenueCandidate[]): DemographicsResult | undefined {
+export function aggregateDemographics(
+  venues: VenueCandidate[],
+): DemographicsResult | undefined {
   const withDemo = venues.filter((v) => v.demographics);
   if (withDemo.length === 0) return undefined;
 
@@ -46,22 +56,36 @@ export function aggregateRegionInsights(places: QlooPlace[]): RegionInsight[] {
     .slice(0, 12);
 }
 
-export function toCulturalSignalItems(entities: CrossDomainEntity[]): CulturalSignalItem[] {
+export function toCulturalSignalItems(
+  entities: CrossDomainEntity[],
+): CulturalSignalItem[] {
   return entities.map((e) => ({
     name: e.name,
     imageUrl: e.properties?.image?.url,
-    subtitle: (e.properties?.genres ?? e.properties?.primary_genres)?.slice(0, 2).join(", "),
+    subtitle: (e.properties?.genres ?? e.properties?.primary_genres)
+      ?.slice(0, 2)
+      .join(", "),
   }));
 }
 
 export const DIETARY_TAG_TYPE = "urn:tag:dietary_option:qloo";
 
 /** Pull the dietary-option tags Qloo attached to a venue (vegan, gluten-free, halal, ...). */
-export function extractDietaryOptions(tags: { id: string; name: string; type: string }[]): string[] {
+export function extractDietaryOptions(
+  tags: { id: string; name: string; type: string }[],
+): string[] {
   return tags.filter((t) => t.type === DIETARY_TAG_TYPE).map((t) => t.name);
 }
 
-const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+const DAYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
 const DAY_SHORT: Record<string, string> = {
   monday: "Mon",
   tuesday: "Tue",
@@ -72,8 +96,10 @@ const DAY_SHORT: Record<string, string> = {
   sunday: "Sun",
 };
 
-/** "Mon closed; Tue–Sun 17:00–23:00" from Qloo's per-day hours, or undefined if Qloo has none. */
-export function formatHours(hours: NonNullable<QlooPlace["properties"]["hours"]> | undefined): string | undefined {
+/** Monday to Sunday: "11:00–22:00" (several slots joined by ", "), "closed" or "unknown"; undefined if Qloo has none. */
+export function hoursByDay(
+  hours: NonNullable<QlooPlace["properties"]["hours"]> | undefined,
+): string[] | undefined {
   if (!hours) return undefined;
   const perDay = DAYS.map((day) => {
     const slots = hours[day];
@@ -81,10 +107,21 @@ export function formatHours(hours: NonNullable<QlooPlace["properties"]["hours"]>
     if (slots.every((s) => s.closed)) return "closed";
     const open = slots
       .filter((s) => !s.closed && s.opens && s.closes)
-      .map((s) => `${s.opens!.replace(/^T/, "").slice(0, 5)}–${s.closes!.replace(/^T/, "").slice(0, 5)}`);
+      .map(
+        (s) =>
+          `${s.opens!.replace(/^T/, "").slice(0, 5)}–${s.closes!.replace(/^T/, "").slice(0, 5)}`,
+      );
     return open.length > 0 ? open.join(", ") : "unknown";
   });
-  if (perDay.every((t) => t === "unknown")) return undefined;
+  return perDay.every((t) => t === "unknown") ? undefined : perDay;
+}
+
+/** "Mon closed; Tue–Sun 17:00–23:00" from Qloo's per-day hours, or undefined if Qloo has none. */
+export function formatHours(
+  hours: NonNullable<QlooPlace["properties"]["hours"]> | undefined,
+): string | undefined {
+  const perDay = hoursByDay(hours);
+  if (!perDay) return undefined;
 
   const groups: { from: string; to: string; text: string }[] = [];
   DAYS.forEach((day, i) => {
@@ -93,7 +130,10 @@ export function formatHours(hours: NonNullable<QlooPlace["properties"]["hours"]>
     else groups.push({ from: day, to: day, text: perDay[i] });
   });
   return groups
-    .map((g) => `${g.from === g.to ? DAY_SHORT[g.from] : `${DAY_SHORT[g.from]}–${DAY_SHORT[g.to]}`} ${g.text}`)
+    .map(
+      (g) =>
+        `${g.from === g.to ? DAY_SHORT[g.from] : `${DAY_SHORT[g.from]}–${DAY_SHORT[g.to]}`} ${g.text}`,
+    )
     .join("; ");
 }
 
@@ -107,9 +147,11 @@ export function isOperating(place: QlooPlace): boolean {
   const hours = place.properties?.hours;
   if (!hours) return true;
   const days = Object.values(hours);
-  return !(days.length > 0 && days.every((slots) => slots.length > 0 && slots.every((s) => s.closed)));
+  return !(
+    days.length > 0 &&
+    days.every((slots) => slots.length > 0 && slots.every((s) => s.closed))
+  );
 }
-
 
 /**
  * Rank candidate tags from broadest/most "place-matchable" to narrowest, so we can
@@ -119,7 +161,12 @@ export function isOperating(place: QlooPlace): boolean {
  * one ("izakaya") that places are actually tagged with.
  */
 export function rankTagsForPlaceMatching(
-  tags: { id: string; name: string; type: string; properties?: { is_canonical?: boolean } }[]
+  tags: {
+    id: string;
+    name: string;
+    type: string;
+    properties?: { is_canonical?: boolean };
+  }[],
 ): { id: string; name: string; type: string }[] {
   const typeWeight: Record<string, number> = {
     "urn:tag:category:place": 3,
@@ -130,17 +177,55 @@ export function rankTagsForPlaceMatching(
   };
   return [...tags].sort((a, b) => {
     const score = (t: (typeof tags)[number]) =>
-      (typeWeight[t.type] ?? 0) * 10 + (t.properties?.is_canonical ? 5 : 0) - t.id.split("_").length;
+      (typeWeight[t.type] ?? 0) * 10 +
+      (t.properties?.is_canonical ? 5 : 0) -
+      t.id.split("_").length;
     return score(b) - score(a);
   });
 }
 
 const STOPWORDS = new Set([
-  "style", "styled", "inspired", "small", "plates", "plate", "dish", "dishes", "menu", "concept",
-  "the", "a", "an", "and", "or", "with", "of", "based",
+  "style",
+  "styled",
+  "inspired",
+  "small",
+  "plates",
+  "plate",
+  "dish",
+  "dishes",
+  "menu",
+  "concept",
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "with",
+  "of",
+  "based",
   // Words about the business, not the food: "ghost kitchen for halal fried chicken wings" is about chicken.
-  "ghost", "kitchen", "special", "specials", "seasonal", "pop", "popup", "item", "items", "new", "our",
-  "for", "from", "into", "house", "homemade", "made", "fresh", "local", "serving", "offer", "offering",
+  "ghost",
+  "kitchen",
+  "special",
+  "specials",
+  "seasonal",
+  "pop",
+  "popup",
+  "item",
+  "items",
+  "new",
+  "our",
+  "for",
+  "from",
+  "into",
+  "house",
+  "homemade",
+  "made",
+  "fresh",
+  "local",
+  "serving",
+  "offer",
+  "offering",
 ]);
 
 /**
@@ -154,8 +239,8 @@ export function extractKeywords(concept: string): string[] {
       concept
         .toLowerCase()
         .split(/[^a-z0-9]+/)
-        .filter((w) => w.length > 2 && !STOPWORDS.has(w))
-    )
+        .filter((w) => w.length > 2 && !STOPWORDS.has(w)),
+    ),
   );
   // Cap the number of keywords: each one is a separate Qloo API call, and the event
   // key has a shared rate limit — a long concept phrase shouldn't fan out into a
@@ -164,12 +249,16 @@ export function extractKeywords(concept: string): string[] {
   return words.length >= 2 ? [`${words[0]} ${words[1]}`, ...singles] : singles;
 }
 
-
 /** What Qloo actually geocoded the city query to, so a bare/ambiguous name (e.g. "Paris") doesn't silently resolve to the wrong place. */
-export function describeResolvedLocation(place?: QlooPlace): string | undefined {
+export function describeResolvedLocation(
+  place?: QlooPlace,
+): string | undefined {
   const geo = place?.properties?.geocode;
   if (!geo?.city) return undefined;
-  const region = geo.admin1_region && geo.admin1_region !== geo.city ? geo.admin1_region : undefined;
+  const region =
+    geo.admin1_region && geo.admin1_region !== geo.city
+      ? geo.admin1_region
+      : undefined;
   return [geo.city, region, geo.country].filter(Boolean).join(", ");
 }
 
@@ -185,11 +274,19 @@ function words(text: string): string[] {
  * shared word, or one that is a stem of the other ("taco" / "tacos"), counts. Concepts with no
  * Latin letters (e.g. Russian) cannot be compared with English tag names, so they are not flagged.
  */
-export function conceptMatchesTag(concept: string, tagNames: string[]): boolean {
+export function conceptMatchesTag(
+  concept: string,
+  tagNames: string[],
+): boolean {
   if (!/[a-z]/i.test(concept)) return true;
   const tagWords = tagNames.flatMap(words);
   return words(concept).some((c) =>
-    tagWords.some((t) => c === t || (Math.min(c.length, t.length) >= 4 && (c.startsWith(t) || t.startsWith(c))))
+    tagWords.some(
+      (t) =>
+        c === t ||
+        (Math.min(c.length, t.length) >= 4 &&
+          (c.startsWith(t) || t.startsWith(c))),
+    ),
   );
 }
 
@@ -197,7 +294,10 @@ export function conceptMatchesTag(concept: string, tagNames: string[]): boolean 
  * A warning when Qloo placed the city query somewhere that does not contain what was typed (e.g.
  * "Portland, ME" resolved to the suburb Cape Elizabeth). Short abbreviations ("NYC", "LA") are not checked.
  */
-export function locationMismatch(query: string, place?: QlooPlace): string | undefined {
+export function locationMismatch(
+  query: string,
+  place?: QlooPlace,
+): string | undefined {
   const geo = place?.properties?.geocode;
   if (!geo || query.split(",")[0].trim().length <= 3) return undefined;
   if (geoMatches(query, geo)) return undefined;

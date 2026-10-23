@@ -56,7 +56,13 @@ function Tile({
 }
 
 /** The answer first: a one-line headline and the four numbers a chef decides on. */
-export function ReportHeader({ result }: { result: PilotPackage }) {
+export function ReportHeader({
+  result,
+  letter,
+}: {
+  result: PilotPackage;
+  letter: string;
+}) {
   const [copied, setCopied] = useState(false);
   const fit = result.agent?.analysis?.verdict?.fit;
   const audience = result.aggregateDemographics;
@@ -66,7 +72,7 @@ export function ReportHeader({ result }: { result: PilotPackage }) {
 
   async function copyLetter() {
     try {
-      await navigator.clipboard.writeText(result.ownerLetter);
+      await navigator.clipboard.writeText(letter);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

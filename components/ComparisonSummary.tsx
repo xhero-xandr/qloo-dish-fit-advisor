@@ -1,4 +1,6 @@
-import { AGE_LABELS, PRICE_LABEL } from "./constants";
+import { coreAgeLabel, genderLean } from "@/lib/audience";
+import { PRICE_LABEL } from "./constants";
+import { Explainers } from "./Explainers";
 import { Section } from "./Section";
 import type { CityResult, Demographics } from "./types";
 
@@ -6,18 +8,11 @@ const NO_AUDIENCE = "no audience data";
 
 function dominantAgeLabel(demo?: Demographics): string {
   if (!demo) return NO_AUDIENCE;
-  const entries = Object.entries(demo.age ?? {});
-  if (entries.length === 0) return NO_AUDIENCE;
-  const top = entries.sort((a, b) => b[1] - a[1])[0];
-  return AGE_LABELS[top[0]] ?? top[0];
+  return coreAgeLabel(demo) ?? "no clear group";
 }
 
 function genderLeanLabel(demo?: Demographics): string {
-  if (!demo) return NO_AUDIENCE;
-  const lean = (demo.gender?.male ?? 0) - (demo.gender?.female ?? 0);
-  if (lean > 0.1) return "skews male";
-  if (lean < -0.1) return "skews female";
-  return "balanced";
+  return demo ? genderLean(demo) : NO_AUDIENCE;
 }
 
 interface CityStats {
@@ -80,14 +75,6 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
       title="City comparison"
       subtitle={`${results.length} cities analyzed for the same concept`}
     >
-      {usable.length > 1 && (
-        <p className="mb-3 text-xs text-zinc-400">
-          &quot;Best fit&quot; ranks by matching venues found (weighted 2× each)
-          plus average rating — more real candidate venues counts more than a
-          slightly higher rating. This is our ranking heuristic on top of
-          Qloo&apos;s data, not a Qloo score itself.
-        </p>
-      )}
       {winner && usable.length > 1 && (
         <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
           <strong>{winner.city}</strong> looks like the strongest fit —{" "}
@@ -115,8 +102,8 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
               <th className="px-4 py-2.5 font-medium">Venues found</th>
               <th className="px-4 py-2.5 font-medium">Avg rating</th>
               <th className="px-4 py-2.5 font-medium">Price level</th>
-              <th className="px-4 py-2.5 font-medium">Dominant age group</th>
-              <th className="px-4 py-2.5 font-medium">Gender skew</th>
+              <th className="px-4 py-2.5 font-medium">Core guests</th>
+              <th className="px-4 py-2.5 font-medium">Men / women</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -179,6 +166,13 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4">
+        <Explainers
+          shows="The same dish in each city side by side: how many matching venues Qloo found, their rating and price level, and who likes them more than the average person."
+          use="Choose where to run the first pilot, then open that city's tab for its venues, plan and letter."
+          notMean="It is not a sales forecast. “Best fit” is our own rule (matching venues count double, plus the average rating), and bigger cities simply have more venues."
+        />
       </div>
     </Section>
   );

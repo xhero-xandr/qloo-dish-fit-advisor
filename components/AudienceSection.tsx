@@ -9,11 +9,12 @@ import {
   type Level,
 } from "@/lib/audience";
 import { AGE_LABELS } from "./constants";
+import { Explainers } from "./Explainers";
 import type { Demographics, PilotPackage } from "./types";
 
 // Blue for "likes it more", orange for "less", grey for "about average": one diverging pair, and
 // every cell also carries the word, so colour is never the only cue.
-const LEVEL_STYLE: Record<Level, string> = {
+export const LEVEL_STYLE: Record<Level, string> = {
   "much more": "bg-blue-700 text-white",
   more: "bg-blue-200 text-blue-950 dark:bg-blue-900 dark:text-blue-100",
   "about average":
@@ -31,23 +32,6 @@ const LEVELS: Level[] = [
 
 function signed(n: number): string {
   return `${n > 0 ? "+" : ""}${n.toFixed(2)}`;
-}
-
-function Explainer({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl bg-zinc-100 px-4 py-3 dark:bg-zinc-900">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-        {children}
-      </p>
-    </div>
-  );
 }
 
 /** Who likes the matched venues, in words first; Qloo's scores stay one click away. */
@@ -117,24 +101,30 @@ export function AudienceSection({
           <span>than the average person</span>
         </p>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <Explainer title="What this shows">
-            Which age groups and genders like the venues that match your dish
-            more, or less, than the average person. It comes from Qloo&apos;s
-            data on what people like, not from a survey of these venues.
-          </Explainer>
-          <Explainer title="How to use it">
-            Cook and promote for the groups marked <strong>more</strong>: pick
-            the venue whose guests are the people you cook for, set prices and
-            portions for them, and invite them where they already are (see
-            &quot;Beyond food&quot;).
-          </Explainer>
-          <Explainer title="What it does not mean">
-            It is not the share of guests or a headcount, and it says nothing
-            about any one person. <strong>Less</strong> does not mean they never
-            come; it means they are not the core of this crowd.
-          </Explainer>
-        </div>
+        <Explainers
+          shows={
+            <>
+              Which age groups and genders like the venues that match your dish
+              more, or less, than the average person. It comes from Qloo&apos;s
+              data on what people like, not from a survey of these venues.
+            </>
+          }
+          use={
+            <>
+              Cook and promote for the groups marked <strong>more</strong>: pick
+              the venue whose guests are the people you cook for, set prices and
+              portions for them, and invite them where they already are (see
+              &quot;Beyond food&quot;).
+            </>
+          }
+          notMean={
+            <>
+              It is not the share of guests or a headcount, and it says nothing
+              about any one person. <strong>Less</strong> does not mean they
+              never come; it means they are not the core of this crowd.
+            </>
+          }
+        />
       </section>
 
       {withData.length > 0 && (

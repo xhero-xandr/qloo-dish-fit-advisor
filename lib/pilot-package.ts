@@ -18,6 +18,7 @@ import {
 } from "./provenance";
 import type { Details } from "./input";
 import { cacheKey, createResultCache } from "./result-cache";
+import { ownerLetterFor } from "./letter";
 import { resolveCityQuery } from "./location";
 import {
   CityNotFoundError,
@@ -33,6 +34,7 @@ import {
   extractDietaryOptions,
   DIETARY_TAG_TYPE,
   formatHours,
+  hoursByDay,
   isOperating,
   locationMismatch,
   toCulturalSignalItems,
@@ -63,6 +65,8 @@ export interface VenueCandidate {
   website?: string;
   imageUrl?: string;
   hours?: string;
+  /** Monday to Sunday, each "11:00–22:00", "closed" or "unknown". */
+  openingDays?: string[];
   vibeTags: string[];
   dietaryOptions: string[];
   reviewKeywords: RegionInsight[];
@@ -122,6 +126,8 @@ export interface PilotPackage {
   tastingBrief: string;
   pilotPlan: string[];
   ownerLetter: string;
+  /** The dish in a few words, as the letter and the brief name it. */
+  dishLabel?: string;
   limitations: string[];
   /** How a long description was read: the search phrase and the dishes found. Present only when it was read. */
   brief?: Pick<Brief, "core" | "dishes">;
@@ -453,6 +459,7 @@ async function buildPilotPackageUncached(
         website: p.properties?.website,
         imageUrl: p.properties?.image?.url,
         hours: formatHours(p.properties?.hours),
+        openingDays: hoursByDay(p.properties?.hours),
         vibeTags: (p.tags ?? [])
           .filter((t) => t.type !== DIETARY_TAG_TYPE)
           .slice(0, 6)
@@ -608,26 +615,7 @@ async function buildPilotPackageUncached(
   const bestVenue =
     venues.find((v) => v.name === agent?.analysis?.recommendedVenue?.name) ??
     venues[0];
-  const ownerLetter = bestVenue
-    ? [
-        bestVenue.phone
-          ? `Direct contact (a call usually beats email — less risk of landing in spam): ${bestVenue.phone}`
-          : `No direct phone number found in Qloo's data — use the venue's website instead.`,
-        "",
-        `Subject: collaboration proposal — tasting night for "${label}"`,
-        "",
-        `Hi,`,
-        "",
-        `We're developing a concept for "${label}" and, based on audience taste data, ${bestVenue.name} looks like one of the strongest-fit venues in ${city} — your place is close in atmosphere and taste profile (${bestVenue.vibeTags.slice(0, 3).join(", ") || "a matching niche"}).`,
-        "",
-        `We'd like to propose a one-off tasting night at your venue: we handle the menu and service, you provide the space and your audience. For you, it's an extra draw on a slower night, with no risk or investment in a new menu.`,
-        "",
-        `Happy to discuss a date and format at your convenience.`,
-        "",
-        `Best,`,
-        `[Your name]`,
-      ].join("\n")
-    : `Not enough venue data in ${city} to draft a letter — try a different city or concept.`;
+  const ownerLetter = ownerLetterFor(bestVenue, label, city);
 
   return {
     concept,
@@ -643,6 +631,7 @@ async function buildPilotPackageUncached(
     tastingBrief,
     pilotPlan,
     ownerLetter,
+    dishLabel: label,
     limitations,
     brief: brief.interpreted
       ? { core: brief.core, dishes: brief.dishes }
