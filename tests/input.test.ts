@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { validateInput } from "../lib/input.ts";
+import { oneLine, validateInput } from "../lib/input.ts";
 
 test("ordinary concepts and cities pass, in any language", () => {
   assert.equal(validateInput("birria tacos", "Phoenix, AZ"), undefined);
@@ -78,4 +78,9 @@ test("a chosen category is kept only when it looks like a Qloo tag with a name",
     "urn:tag:cuisine:qloo:banh_mi",
   ])
     assert.equal(parseDetails({ tag }), undefined, JSON.stringify(tag));
+});
+
+test("a menu of one dish per line becomes one line for headings", () => {
+  assert.equal(oneLine("Gyoza\n  Spicy miso ramen \n\nMochi\n"), "Gyoza · Spicy miso ramen · Mochi");
+  assert.equal(oneLine("birria tacos"), "birria tacos");
 });

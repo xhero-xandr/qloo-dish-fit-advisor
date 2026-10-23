@@ -92,7 +92,7 @@ function compactTag(t: { id: string; name: string; type: string }) {
 export type SearchTags = (query: string) => Promise<QlooTag[]>;
 
 /** Tries each model in the chain in turn; Qloo lookups are memoized by the caller, so a retry doesn't re-spend Qloo quota. */
-async function withModelFallback<T>(models: ChainModel[], run: (model: ChainModel) => Promise<T>): Promise<T> {
+export async function withModelFallback<T>(models: ChainModel[], run: (model: ChainModel) => Promise<T>): Promise<T> {
   const errors: string[] = [];
   for (const model of models) {
     if (isModelParked(model.label)) {

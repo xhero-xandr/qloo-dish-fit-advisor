@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { coreAgeLabel, genderLean } from "@/lib/audience";
+import { oneLine } from "@/lib/input";
 import { PRICE_LABEL } from "./constants";
 import type { Fit, PilotPackage } from "./types";
 
@@ -85,7 +86,7 @@ export function ReportHeader({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm text-zinc-500">
-            {result.concept} · {result.city}
+            {oneLine(result.concept)} · {result.city}
             {tag && (
               <>
                 {" "}

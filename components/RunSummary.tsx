@@ -1,3 +1,5 @@
+import { oneLine } from "@/lib/input";
+
 /** What is being tested, above the report, with the way back to the steps. */
 export function RunSummary({
   concept,
@@ -8,15 +10,16 @@ export function RunSummary({
   cities: string[];
   onEdit: () => void;
 }) {
+  const what = oneLine(concept);
   return (
     <div className="no-print flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
       <p className="min-w-0 text-sm text-zinc-500">
         Testing{" "}
         <span
           className="font-semibold text-zinc-900 dark:text-zinc-100"
-          title={concept}
+          title={what}
         >
-          {concept.length > 80 ? `${concept.slice(0, 80)}…` : concept}
+          {what.length > 80 ? `${what.slice(0, 80)}…` : what}
         </span>{" "}
         in{" "}
         <span className="font-medium text-zinc-900 dark:text-zinc-100">

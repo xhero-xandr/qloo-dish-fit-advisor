@@ -51,7 +51,8 @@ Two steps, then a report that leads with the answer:
 
 - **Step 1 · Your menu, Step 2 · Where.** A dish, a cuisine or a full
   description with ingredients; optional dietary needs and season; one city
-  or several to compare.
+  or several to compare. The menu can also come from a photo or file, or a
+  Google link (below).
 - **The answer first.** A one-line headline ("Worth a pilot: a strong match
   in Austin, TX"), then four numbers: the fit, the venues to pilot in, the
   core guests, the price level.
@@ -74,6 +75,49 @@ Two steps, then a report that leads with the answer:
 
 On a phone the report splits into tabs (Verdict, Venues, Audience, Plan, and
 Menu to go back) on a bottom bar; printing always includes every section.
+
+### Adding a menu without typing it
+
+Most chefs already have the menu somewhere: on paper, in a PDF, in a Word or
+Excel file, in a Google Doc. Step 1 has three tabs: **Type it**, **Upload
+photo or file** and **Google link**. A file or link is read into a list of
+dishes, one per line, which fills the text field; the chef checks it, fixes
+what was misread, and runs the analysis as usual. Nothing else in the
+analysis changes.
+
+- **What is read** (`lib/menu-source.ts`): photos (JPEG, PNG, WebP, HEIC) and
+  PDFs go to the model as they are. Gemini reads both, handwriting included.
+  For Word (.docx) and Excel (.xlsx), the app takes the text out of the file
+  itself (`lib/zip.ts` reads the zip, with a cap on how far an entry may
+  inflate), so the model gets text. CSV and plain text are read as UTF-8.
+  The type comes from the file's first bytes, not from its name. Old .doc and
+  .xls files get a message asking for .docx, .xlsx or PDF.
+- **Google Docs and Sheets:** the document must be shared as "Anyone with
+  the link can view"; nothing signs in to Google. The app accepts only
+  `https://docs.google.com/document/…` and `…/spreadsheets/…` links, and
+  builds the download address from the document's id rather than fetching
+  the pasted URL. It follows redirects only to Google's own download hosts.
+  A private document gets a message saying how to share it.
+- **The model's job** (`lib/menu-reader.ts`): list the dishes and drinks with
+  their sections; leave out prices, hours, addresses and marketing text.
+  Well-known dishes keep their own names ("Pelmeni (meat dumplings)",
+  "Cacio e pepe"); descriptions in other languages are translated. Anything
+  that is not a menu gets a message saying what it looks like instead. A
+  plumbing invoice, for example, came back as "an invoice for plumbing repair".
+- **Limits:** 10 MB per file (the browser shrinks large photos to 2400 px
+  before upload, so a 5 MB phone photo goes up at about 1 MB), 20 reads per
+  hour per address, demo sign-in required. The dishes that fit the field's
+  800 characters are kept, and the page says how many were left out.
+- **Privacy:** the file or document text is sent to the language model to be
+  read and is not stored by this app.
+- **Without a model** (none configured, or its quota spent): text sources are
+  split one dish per line with prices removed, and the page says so. Photos
+  and PDFs can't be read without the model.
+
+Tested with a handwritten-style photo, a French PDF, Word and Excel files,
+a Russian CSV, a non-menu image, and Google's public sample spreadsheet. All
+read correctly or were refused with the right message. A photo read takes
+about 2–7 s.
 
 ### Why this needs Qloo, not just an LLM
 
@@ -465,7 +509,8 @@ the same credentials go in the Devpost testing instructions.
   Forged and expired tokens are rejected.
 - **Limits per client address** (from `cf-connecting-ip` / `x-forwarded-for`,
   in memory, reset by a restart): 30 analyses per hour (a city comparison
-  sends one per city) and 10 sign-in attempts per 10 minutes.
+  sends one per city), 20 menu reads per hour, and 10 sign-in attempts per
+  10 minutes.
 - **What this is and isn't:** because the demo credentials are public by
   design, the login keeps casual and automated traffic off the quota; it is
   not access control. The per-address limits are what bound abuse, and

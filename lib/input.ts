@@ -107,3 +107,12 @@ export function validateInput(
   if (!HAS_WORD.test(city)) return 'Enter a city name, e.g. "Austin, TX".';
   return undefined;
 }
+
+/** A menu typed or read one dish per line, as one line for headings: "Gyoza · Spicy miso ramen". */
+export function oneLine(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" · ");
+}

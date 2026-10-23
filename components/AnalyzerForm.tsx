@@ -1,9 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PRESETS, QUICK_CITIES } from "./constants";
 import { DIETARY_OPTIONS, MAX_CONCEPT_LENGTH, type Details } from "@/lib/input";
+import type { MenuRead } from "@/lib/menu-handler";
+import { MenuImport } from "./MenuImport";
 import { Button, Chip, inputClass } from "./ui";
+
+const TABS = [
+  ["text", "Type it", "Type it"],
+  ["upload", "Upload photo or file", "Photo or file"],
+  ["link", "Google link", "Google link"],
+] as const;
+type Tab = (typeof TABS)[number][0];
+
+/** What the last upload or link gave, shown above the field it filled. */
+interface Imported {
+  from: string;
+  total: number;
+  included: number;
+  byLines: boolean;
+}
 
 interface Props {
   concept: string;
@@ -27,6 +44,25 @@ export function AnalyzerForm({
   onRun,
 }: Props) {
   const [draft, setDraft] = useState("");
+  const [tab, setTab] = useState<Tab>("text");
+  const [imported, setImported] = useState<Imported>();
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  function showField() {
+    setTab("text");
+    requestAnimationFrame(() => field.current?.focus());
+  }
+
+  function handleRead(read: MenuRead, from: string) {
+    setConcept(read.text);
+    setImported({
+      from,
+      total: read.dishes.length,
+      included: read.included,
+      byLines: read.readBy === "lines",
+    });
+    showField();
+  }
 
   function addCity(raw: string) {
     const value = raw.trim();
@@ -57,7 +93,8 @@ export function AnalyzerForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const pending = draft.trim() ? [...cities, draft.trim()] : cities;
-    if (!concept.trim() || pending.length === 0) return;
+    if (!concept.trim()) return showField();
+    if (pending.length === 0) return;
     setCities(() => pending);
     setDraft("");
     onRun(concept, pending, details);
@@ -68,6 +105,7 @@ export function AnalyzerForm({
     setCities(() => [p.city]);
     setDraft("");
     setDetails({});
+    setImported(undefined);
     onRun(p.concept, [p.city], {});
   }
 
@@ -85,17 +123,86 @@ export function AnalyzerForm({
             What do you want to test?
           </h1>
           <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">
-            A dish, a cuisine, or a full description with ingredients and
-            dishes. The agent reads it into what kind of food it is and finds
-            the venues and guests that already like it.
+            One dish, a few, or a whole menu. Type it, upload a photo or file,
+            or paste a Google Docs or Sheets link. The agent works out what
+            kind of food it is and finds the venues and guests that already
+            like it.
           </p>
         </div>
 
-        <div>
+        <div
+          role="tablist"
+          aria-label="How to add the menu"
+          className="flex gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900"
+        >
+          {TABS.map(([id, label, short]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`tab-${id}`}
+              aria-selected={tab === id}
+              aria-controls={`panel-${id}`}
+              onClick={() => setTab(id)}
+              className="min-h-[40px] flex-1 rounded-lg px-2 text-sm font-medium text-zinc-600 transition aria-selected:bg-white aria-selected:text-zinc-900 aria-selected:shadow-sm dark:text-zinc-400 dark:aria-selected:bg-zinc-800 dark:aria-selected:text-zinc-100"
+            >
+              <span className="max-sm:hidden">{label}</span>
+              <span className="sm:hidden">{short}</span>
+            </button>
+          ))}
+        </div>
+
+        {tab !== "text" && (
+          <div
+            role="tabpanel"
+            id={`panel-${tab}`}
+            aria-labelledby={`tab-${tab}`}
+          >
+            <MenuImport
+              key={tab}
+              mode={tab}
+              disabled={loading}
+              onRead={handleRead}
+            />
+          </div>
+        )}
+
+        <div
+          role="tabpanel"
+          id="panel-text"
+          aria-labelledby="tab-text"
+          hidden={tab !== "text"}
+        >
+          {imported && (
+            <div className="mb-3 rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-950 dark:bg-accent-950/60 dark:text-accent-100">
+              <p>
+                <strong className="font-semibold">
+                  Read {imported.total}{" "}
+                  {imported.total === 1 ? "dish" : "dishes"} from{" "}
+                  {imported.from}.
+                </strong>{" "}
+                Check the list below and fix anything that was misread.
+              </p>
+              {imported.included < imported.total && (
+                <p className="mt-1">
+                  Only the first {imported.included} fit in the field&apos;s{" "}
+                  {MAX_CONCEPT_LENGTH} characters. Remove some to make room for
+                  others.
+                </p>
+              )}
+              {imported.byLines && (
+                <p className="mt-1">
+                  The language model was unavailable, so each line was taken
+                  as a dish.
+                </p>
+              )}
+            </div>
+          )}
           <label htmlFor="concept" className="block font-medium">
             Dish or menu
           </label>
           <textarea
+            ref={field}
             id="concept"
             className={`${inputClass} mt-2 resize-y text-base`}
             rows={5}
@@ -107,7 +214,7 @@ export function AnalyzerForm({
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey))
                 e.currentTarget.form?.requestSubmit();
             }}
-            required
+            required={tab === "text"}
           />
           {concept.length > MAX_CONCEPT_LENGTH * 0.75 && (
             <p className="mt-1 text-right text-xs text-zinc-500">
