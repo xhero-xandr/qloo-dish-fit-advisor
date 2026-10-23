@@ -16,7 +16,9 @@ export function Section({
           <span className="h-3.5 w-1 rounded-full bg-accent-500" />
           {title}
         </h2>
-        {subtitle && <p className="mt-0.5 pl-3 text-xs text-zinc-400">{subtitle}</p>}
+        {subtitle && (
+          <p className="mt-0.5 pl-3 text-xs text-zinc-400">{subtitle}</p>
+        )}
       </div>
       {children}
     </section>

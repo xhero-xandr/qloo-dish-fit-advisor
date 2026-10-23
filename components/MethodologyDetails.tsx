@@ -9,23 +9,30 @@ export function MethodologyDetails() {
       <div className="border-t border-zinc-200 px-4 py-3 text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
         <ol className="list-decimal space-y-1.5 pl-4">
           <li>
-            An AI agent maps your concept to Qloo taste tags by calling Qloo itself (<code className={CODE}>GET /v2/tags</code>), and
-            checks which tag has real venues in your city (<code className={CODE}>GET /v2/insights</code>, places).
+            An AI agent maps your concept to Qloo taste tags by calling Qloo
+            itself (<code className={CODE}>GET /v2/tags</code>), and checks
+            which tag has real venues in your city (
+            <code className={CODE}>GET /v2/insights</code>, places).
           </li>
           <li>
-            For those venues the app pulls hours, ratings, dietary tags and review keywords, each venue&apos;s audience
-            (<code className={CODE}>urn:demographics</code>), and the brands, TV shows, artists and podcasts that same audience
-            favors, seeded with the venues themselves.
+            For those venues the app pulls hours, ratings, dietary tags and
+            review keywords, each venue&apos;s audience (
+            <code className={CODE}>urn:demographics</code>), and the brands, TV
+            shows, artists and podcasts that same audience favors, seeded with
+            the venues themselves.
           </li>
           <li>
-            Every datum becomes a numbered fact. The agent writes the verdict, the recommended venue, the 4-week plan and the
-            letter from those facts only, and cites the facts behind each claim. Code discards claims without a valid
-            citation and moves any tasting time that falls outside the venue&apos;s real opening hours.
+            Every datum becomes a numbered fact. The agent writes the verdict,
+            the recommended venue, the 4-week plan and the letter from those
+            facts only, and cites the facts behind each claim. Code discards
+            claims without a valid citation and moves any tasting time that
+            falls outside the venue&apos;s real opening hours.
           </li>
           <li>
-            Every venue, rating, hour, phone number and demographic score is a live Qloo result. The agent&apos;s wording is
-            its own, so check the cited fact before relying on a claim. If the AI is unavailable the app falls back to
-            keyword matching and a template plan, and says so.
+            Every venue, rating, hour, phone number and demographic score is a
+            live Qloo result. The agent&apos;s wording is its own, so check the
+            cited fact before relying on a claim. If the AI is unavailable the
+            app falls back to keyword matching and a template plan, and says so.
           </li>
         </ol>
         <p className="mt-2 text-xs text-zinc-500">

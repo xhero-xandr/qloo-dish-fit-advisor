@@ -18,8 +18,15 @@ export function Button({
   variant = "primary",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof BUTTON_VARIANTS }) {
-  return <button {...props} className={`${BUTTON_BASE} ${BUTTON_VARIANTS[variant]} ${className}`} />;
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: keyof typeof BUTTON_VARIANTS;
+}) {
+  return (
+    <button
+      {...props}
+      className={`${BUTTON_BASE} ${BUTTON_VARIANTS[variant]} ${className}`}
+    />
+  );
 }
 
 /** A small pill button: selected = filled accent, otherwise outlined. */

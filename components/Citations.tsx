@@ -4,7 +4,13 @@ import { useState } from "react";
 import { FactSourceView } from "./FactSource";
 import type { Fact } from "./types";
 
-export function Citations({ ids, facts }: { ids: string[]; facts: Map<string, Fact> }) {
+export function Citations({
+  ids,
+  facts,
+}: {
+  ids: string[];
+  facts: Map<string, Fact>;
+}) {
   const [open, setOpen] = useState(false);
   if (ids.length === 0) return null;
   return (
@@ -14,7 +20,11 @@ export function Citations({ ids, facts }: { ids: string[]; facts: Map<string, Fa
         onClick={() => setOpen((o) => !o)}
         className="inline-flex gap-0.5 align-middle"
         aria-expanded={open}
-        title={open ? "Hide the Qloo facts behind this" : "Show the Qloo facts behind this"}
+        title={
+          open
+            ? "Hide the Qloo facts behind this"
+            : "Show the Qloo facts behind this"
+        }
       >
         {ids.map((id) => (
           <span
@@ -29,7 +39,10 @@ export function Citations({ ids, facts }: { ids: string[]; facts: Map<string, Fa
         <span className="mt-1.5 block rounded-lg border border-sky-100 bg-sky-50/50 px-2.5 py-1.5 text-[13px] leading-relaxed text-zinc-600 dark:border-sky-900 dark:bg-sky-950/40 dark:text-zinc-300">
           {ids.map((id) => (
             <span key={id} className="block">
-              <span className="font-mono text-sky-700 dark:text-sky-300">{id}</span> {facts.get(id)?.text}
+              <span className="font-mono text-sky-700 dark:text-sky-300">
+                {id}
+              </span>{" "}
+              {facts.get(id)?.text}
               <FactSourceView source={facts.get(id)?.source} />
             </span>
           ))}

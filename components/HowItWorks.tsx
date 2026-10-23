@@ -17,7 +17,9 @@ const STEPS = [
 export function HowItWorks() {
   return (
     <section aria-label="How it works" className="no-print mt-14">
-      <p className="text-xs font-semibold uppercase tracking-widest text-accent-700 dark:text-accent-400">How it works</p>
+      <p className="text-xs font-semibold uppercase tracking-widest text-accent-700 dark:text-accent-400">
+        How it works
+      </p>
       <ol className="mt-4 grid gap-4 sm:grid-cols-3">
         {STEPS.map((s, i) => (
           <li
@@ -28,7 +30,9 @@ export function HowItWorks() {
               {i + 1}
             </span>
             <h3 className="mt-3 text-base font-semibold">{s.title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{s.text}</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              {s.text}
+            </p>
           </li>
         ))}
       </ol>

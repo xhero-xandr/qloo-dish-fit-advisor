@@ -35,8 +35,13 @@ interface CityStats {
 function computeStats(results: CityResult[]): CityStats[] {
   return results.map((r) => {
     const venues = r.data?.venues ?? [];
-    const ratings = venues.map((v) => v.rating).filter((n): n is number => typeof n === "number");
-    const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+    const ratings = venues
+      .map((v) => v.rating)
+      .filter((n): n is number => typeof n === "number");
+    const avgRating =
+      ratings.length > 0
+        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+        : null;
     return {
       city: r.city,
       error: r.error,
@@ -44,7 +49,13 @@ function computeStats(results: CityResult[]): CityStats[] {
       avgRating,
       demo: r.data?.aggregateDemographics,
       prices: [1, 2, 3, 4]
-        .map((level) => [level, venues.filter((v) => v.priceLevel === level).length] as const)
+        .map(
+          (level) =>
+            [
+              level,
+              venues.filter((v) => v.priceLevel === level).length,
+            ] as const,
+        )
         .filter(([, n]) => n > 0)
         .map(([level, n]) => `${PRICE_LABEL[level]} ×${n}`)
         .join(", "),
@@ -57,27 +68,41 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
   const stats = computeStats(results);
   // A city with no matching venues cannot be the best place for a pilot.
   const usable = stats.filter((s) => !s.error && s.venueCount > 0);
-  const winner = usable.length > 0 ? [...usable].sort((a, b) => b.fitScore - a.fitScore)[0] : undefined;
+  const winner =
+    usable.length > 0
+      ? [...usable].sort((a, b) => b.fitScore - a.fitScore)[0]
+      : undefined;
   const maxVenues = Math.max(0, ...stats.map((s) => s.venueCount));
   const maxRating = Math.max(0, ...stats.map((s) => s.avgRating ?? 0));
 
   return (
-    <Section title="City comparison" subtitle={`${results.length} cities analyzed for the same concept`}>
+    <Section
+      title="City comparison"
+      subtitle={`${results.length} cities analyzed for the same concept`}
+    >
       {usable.length > 1 && (
         <p className="mb-3 text-xs text-zinc-400">
-          &quot;Best fit&quot; ranks by matching venues found (weighted 2× each) plus average rating — more
-          real candidate venues counts more than a slightly higher rating. This is our ranking heuristic
-          on top of Qloo&apos;s data, not a Qloo score itself.
+          &quot;Best fit&quot; ranks by matching venues found (weighted 2× each)
+          plus average rating — more real candidate venues counts more than a
+          slightly higher rating. This is our ranking heuristic on top of
+          Qloo&apos;s data, not a Qloo score itself.
         </p>
       )}
       {winner && usable.length > 1 && (
         <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
-          <strong>{winner.city}</strong> looks like the strongest fit — {winner.venueCount} matching venue
+          <strong>{winner.city}</strong> looks like the strongest fit —{" "}
+          {winner.venueCount} matching venue
           {winner.venueCount === 1 ? "" : "s"}
-          {winner.avgRating !== null ? ` averaging ★${winner.avgRating.toFixed(1)}` : ""}, vs.{" "}
+          {winner.avgRating !== null
+            ? ` averaging ★${winner.avgRating.toFixed(1)}`
+            : ""}
+          , vs.{" "}
           {usable
             .filter((s) => s.city !== winner.city)
-            .map((s) => `${s.city} (${s.venueCount}${s.avgRating !== null ? `, ★${s.avgRating.toFixed(1)}` : ""})`)
+            .map(
+              (s) =>
+                `${s.city} (${s.venueCount}${s.avgRating !== null ? `, ★${s.avgRating.toFixed(1)}` : ""})`,
+            )
             .join(", ")}
           .
         </p>
@@ -99,12 +124,23 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
               s.error ? (
                 <tr key={s.city}>
                   <td className="px-4 py-2.5 font-medium">{s.city}</td>
-                  <td colSpan={5} className="px-4 py-2.5 text-xs text-red-500" title={s.error}>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-2.5 text-xs text-red-500"
+                    title={s.error}
+                  >
                     ⚠ {s.error}
                   </td>
                 </tr>
               ) : (
-                <tr key={s.city} className={winner?.city === s.city ? "bg-emerald-50/60 dark:bg-emerald-950/30" : undefined}>
+                <tr
+                  key={s.city}
+                  className={
+                    winner?.city === s.city
+                      ? "bg-emerald-50/60 dark:bg-emerald-950/30"
+                      : undefined
+                  }
+                >
                   <td className="px-4 py-2.5 font-medium">
                     {s.city}
                     {winner?.city === s.city && (
@@ -113,17 +149,33 @@ export function ComparisonSummary({ results }: { results: CityResult[] }) {
                       </span>
                     )}
                   </td>
-                  <td className={`px-4 py-2.5 ${s.venueCount === maxVenues && maxVenues > 0 ? "font-semibold" : ""}`}>
+                  <td
+                    className={`px-4 py-2.5 ${s.venueCount === maxVenues && maxVenues > 0 ? "font-semibold" : ""}`}
+                  >
                     {s.venueCount}
                   </td>
-                  <td className={`px-4 py-2.5 ${s.avgRating === maxRating && maxRating > 0 ? "font-semibold" : ""}`}>
+                  <td
+                    className={`px-4 py-2.5 ${s.avgRating === maxRating && maxRating > 0 ? "font-semibold" : ""}`}
+                  >
                     {s.avgRating !== null ? `★ ${s.avgRating.toFixed(1)}` : "—"}
                   </td>
-                  <td className={`px-4 py-2.5 ${s.prices ? "" : "text-zinc-500"}`}>{s.prices || "not listed"}</td>
-                  <td className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}>{dominantAgeLabel(s.demo)}</td>
-                  <td className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}>{genderLeanLabel(s.demo)}</td>
+                  <td
+                    className={`px-4 py-2.5 ${s.prices ? "" : "text-zinc-500"}`}
+                  >
+                    {s.prices || "not listed"}
+                  </td>
+                  <td
+                    className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}
+                  >
+                    {dominantAgeLabel(s.demo)}
+                  </td>
+                  <td
+                    className={`px-4 py-2.5 ${s.demo ? "" : "text-zinc-500"}`}
+                  >
+                    {genderLeanLabel(s.demo)}
+                  </td>
                 </tr>
-              )
+              ),
             )}
           </tbody>
         </table>

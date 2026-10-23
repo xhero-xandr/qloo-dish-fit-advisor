@@ -72,8 +72,8 @@ export function TagChoice({
         <div className="mt-3">
           {candidates.every((c) => c.venueCount === 0) && (
             <p className="mb-1.5 text-xs text-zinc-500">
-              The other categories found for your description have no venues
-              in {result.city}, so this one is the only workable match here.
+              The other categories found for your description have no venues in{" "}
+              {result.city}, so this one is the only workable match here.
             </p>
           )}
           <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -95,7 +95,10 @@ export function TagChoice({
                   {c.name}
                   {c.venueCount !== undefined && (
                     <span className="ml-1 text-zinc-400">
-                      · {none ? "no venues" : `${c.venueCount} venue${c.venueCount === 1 ? "" : "s"}`}
+                      ·{" "}
+                      {none
+                        ? "no venues"
+                        : `${c.venueCount} venue${c.venueCount === 1 ? "" : "s"}`}
                     </span>
                   )}
                 </button>

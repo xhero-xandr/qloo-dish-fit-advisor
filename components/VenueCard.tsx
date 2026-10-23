@@ -7,7 +7,15 @@ function formatPhone(phone: string): string {
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : phone;
 }
 
-export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate; rank: number; recommended?: boolean }) {
+export function VenueCard({
+  venue,
+  rank,
+  recommended,
+}: {
+  venue: VenueCandidate;
+  rank: number;
+  recommended?: boolean;
+}) {
   return (
     <div
       className={`lift overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-zinc-950 ${
@@ -18,7 +26,12 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
     >
       {venue.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={venue.imageUrl} alt={venue.name} className="h-36 w-full object-cover" loading="lazy" />
+        <img
+          src={venue.imageUrl}
+          alt={venue.name}
+          className="h-36 w-full object-cover"
+          loading="lazy"
+        />
       ) : (
         <div className="flex h-36 w-full items-center justify-center bg-zinc-100 text-zinc-300 dark:bg-zinc-900">
           No image
@@ -37,12 +50,22 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
           </h3>
           <div className="flex shrink-0 items-center gap-1.5 text-xs text-zinc-500">
             {venue.rating && <span>★ {venue.rating.toFixed(1)}</span>}
-            {venue.priceLevel ? <span>{PRICE_LABEL[venue.priceLevel]}</span> : null}
+            {venue.priceLevel ? (
+              <span>{PRICE_LABEL[venue.priceLevel]}</span>
+            ) : null}
           </div>
         </div>
-        {venue.address && <p className="mt-1 text-xs text-zinc-500">{venue.address}</p>}
-        {venue.hours && <p className="mt-0.5 text-xs text-zinc-400">🕑 {venue.hours}</p>}
-        {venue.description && <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{venue.description}</p>}
+        {venue.address && (
+          <p className="mt-1 text-xs text-zinc-500">{venue.address}</p>
+        )}
+        {venue.hours && (
+          <p className="mt-0.5 text-xs text-zinc-400">🕑 {venue.hours}</p>
+        )}
+        {venue.description && (
+          <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+            {venue.description}
+          </p>
+        )}
         {venue.dietaryOptions.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {venue.dietaryOptions.map((d, j) => (
@@ -59,7 +82,9 @@ export function VenueCard({ venue, rank, recommended }: { venue: VenueCandidate;
         {venue.reviewKeywords.length > 0 && (
           <p className="mt-2 text-xs text-zinc-500">
             <span className="text-zinc-400">Reviews mention:</span>{" "}
-            {venue.reviewKeywords.map((k) => `${k.keyword} (${k.mentions})`).join(", ")}
+            {venue.reviewKeywords
+              .map((k) => `${k.keyword} (${k.mentions})`)
+              .join(", ")}
           </p>
         )}
         {venue.vibeTags.length > 0 && (

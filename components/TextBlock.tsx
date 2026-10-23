@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 
-export function TextBlock({ text, highlighted, copyable }: { text: string; highlighted?: boolean; copyable?: boolean }) {
+export function TextBlock({
+  text,
+  highlighted,
+  copyable,
+}: {
+  text: string;
+  highlighted?: boolean;
+  copyable?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <div
