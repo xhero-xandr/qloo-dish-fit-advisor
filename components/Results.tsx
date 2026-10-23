@@ -247,6 +247,18 @@ export function Results({
               : "Generic template — the same steps for every concept"
           }
         >
+          {agentPlan.length > 0 &&
+            picked !== undefined &&
+            picked !== recommendedIndex &&
+            recommendedName &&
+            chosenVenue && (
+              <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+                The agent wrote this plan for {recommendedName}. You chose{" "}
+                {chosenVenue.name}: the letter below follows your choice; check
+                the plan&apos;s day and time against {chosenVenue.name}&apos;s
+                hours under Venues.
+              </p>
+            )}
           <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {(agentPlan.length > 0
               ? agentPlan.map((s) => ({

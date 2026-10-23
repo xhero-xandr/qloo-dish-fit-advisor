@@ -5,17 +5,8 @@ const PILLS = [
   "Every claim cites its source",
 ];
 
-/**
- * `compact` is the signed-in version: the tool matters more than the pitch, so the form stays above
- * the fold.
- */
-export function Hero({
-  children,
-  compact,
-}: {
-  children?: React.ReactNode;
-  compact?: boolean;
-}) {
+/** The signed-out pitch above the sign-in panel. */
+export function Hero() {
   return (
     <header className="no-print">
       <div className="mb-4 flex items-center">
@@ -24,23 +15,19 @@ export function Hero({
           Built on Qloo&apos;s live taste graph — no mock data
         </div>
       </div>
-      <h1
-        className={`font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-4xl sm:text-6xl sm:leading-[1.05]"}`}
-      >
+      <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl sm:leading-[1.05]">
         Dish-Market{" "}
         <span className="bg-gradient-to-r from-accent-600 to-amber-500 bg-clip-text text-transparent">
           Fit Advisor
         </span>
       </h1>
       <>
-        <p
-          className={`max-w-2xl leading-relaxed text-zinc-600 dark:text-zinc-400 ${compact ? "mt-3 text-base" : "mt-5 text-lg sm:text-xl"}`}
-        >
+        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-zinc-600 sm:text-xl dark:text-zinc-400">
           Test a new dish or menu before you invest in it. Describe the concept
           and a city — get real venues to pilot it in, who their audience is,
           and a cited 4-week plan, all grounded in Qloo&apos;s taste graph.
         </p>
-        {!compact && (
+        {
           <ul className="mt-6 flex flex-wrap gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
             {PILLS.map((t) => (
               <li
@@ -51,8 +38,7 @@ export function Hero({
               </li>
             ))}
           </ul>
-        )}
-        {children}
+        }
       </>
     </header>
   );

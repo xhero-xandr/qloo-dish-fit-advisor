@@ -45,6 +45,36 @@ If the model is unavailable (no key, overload, error), every step falls back to
 the deterministic path — keyword-based tag ranking and a template plan — and
 the UI says so.
 
+### What the chef sees
+
+Two steps, then a report that leads with the answer:
+
+- **Step 1 · Your menu, Step 2 · Where.** A dish, a cuisine or a full
+  description with ingredients; optional dietary needs and season; one city
+  or several to compare.
+- **The answer first.** A one-line headline ("Worth a pilot: a strong match
+  in Austin, TX"), then four numbers: the fit, the venues to pilot in, the
+  core guests, the price level.
+- **Why and where, side by side.** The agent's verdict with its citations,
+  what to watch out for and what to put on the tasting menu, next to the
+  venue it suggests, with its hours and its guests.
+- **How the dish was read.** The Qloo category the dish was matched to, who
+  chose it, and the other categories found with their venue counts; picking
+  one re-runs the analysis with it.
+- **Audience in words.** Qloo's affinity scores become "more / about average
+  / less than the average person" (our cut-offs: ±0.05 and ±0.15), with one
+  sentence on who the likely guests are and three short notes under every
+  chart: what it shows, how to use it, and what it does not mean. Qloo's own
+  scores stay one click away.
+- **Venues to choose from.** Each with its hours by day, its own guests, what
+  reviews mention and its dietary options; choosing one rewrites the letter
+  to its owner.
+- **Plan, judging and letter.** The 4-week plan, how to judge the night, a
+  tasting brief and the outreach letter, ready to copy or save as PDF.
+
+On a phone the report splits into tabs (Verdict, Venues, Audience, Plan, and
+Menu to go back) on a bottom bar; printing always includes every section.
+
 ### Why this needs Qloo, not just an LLM
 
 An LLM alone cannot name real Korean fried chicken spots in New York, tell
@@ -365,8 +395,9 @@ and decide on the pilot's own results.
   heavily than a slightly higher rating — a city with 3 modest-rated venues
   can outrank a city with 2 excellent ones. Since at most 4 venues are kept
   per city, any two cities that both hit that cap are separated by average
-  rating alone. This is disclosed in the UI next to the verdict, not left as
-  an unexplained badge — but it is a coarse heuristic, not a fit model.
+  rating alone. This is disclosed in the UI under the comparison ("What it
+  does not mean"), not left as an unexplained badge — but it is a coarse
+  heuristic, not a fit model, and bigger cities simply have more venues.
 - The deterministic fallback's keyword extraction caps at 3 keywords (plus
   the full phrase), so for a long concept later words never reach Qloo —
   "Korean fried chicken with natural wine pairing" only searches "korean",
@@ -388,9 +419,14 @@ and decide on the pilot's own results.
   tags before giving up; it reports which tags it tried in `limitations`
   rather than silently returning nothing or a bad guess.
 - The tasting brief and outreach letter are still fixed templates with Qloo
-  data interpolated (the letter addresses the agent's recommended venue).
-  The pilot plan is agent-written when a model is available and falls back to
-  a generic, clearly labelled template otherwise.
+  data interpolated. The letter addresses the agent's recommended venue, or
+  the venue the chef chooses instead; the agent's plan is not rewritten for a
+  chosen venue, and the page says so. The pilot plan is agent-written when a
+  model is available and falls back to a generic, clearly labelled template
+  otherwise.
+- The words used for audience scores rest on our own cut-offs (±0.05,
+  ±0.15), chosen from a handful of real results rather than calibrated on
+  Qloo's distribution; they are stated on the page next to the scores.
 - Throttling is per client and in memory only: the demo account allows 30
   analyses an hour and 10 sign-in attempts per 10 minutes, and the counters
   reset on restart. Together with the cache, in-flight dedupe and input caps

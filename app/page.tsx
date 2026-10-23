@@ -198,6 +198,7 @@ export default function Home() {
                     {active?.data && (
                       <>
                         <Results
+                          key={active.city}
                           result={active.data}
                           cityCount={requested.length}
                           busy={loading}
