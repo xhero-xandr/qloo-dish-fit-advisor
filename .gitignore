@@ -50,3 +50,6 @@ next-env.d.ts
 # mutation testing
 /.stryker-tmp/
 /reports/
+
+# Saved Qloo responses (QLOO_CACHE=1): never commit, Qloo data must stay out of the repository
+.qloo-cache/
