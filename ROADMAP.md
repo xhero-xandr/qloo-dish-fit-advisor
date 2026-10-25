@@ -7,7 +7,7 @@ cannot be done from the code alone.
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | Run the app under a process supervisor (aaPanel/PM2) instead of a hand-started process | needs owner |
+| 1 | Run the app under a process supervisor instead of a hand-started process: the aaPanel Node project "app" runs and watches it. One switch is left for the owner: the project's "start on boot" in the panel | needs owner (one switch) |
 | 2 | Enable billing (or configure a model with more quota) so judges are not pushed onto the no-LLM fallback by a free daily quota; Gemini is what is tested | needs owner |
 | 3 | Keep `.claude/` and other local tooling out of the public repository | done |
 | 4 | Unit tests for the parts that decide correctness without a network: opening-hours checks, the session signature, the rate limiter | done |

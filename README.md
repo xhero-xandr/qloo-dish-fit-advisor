@@ -686,12 +686,11 @@ npm run build
 npm run start                 # http://localhost:3077
 ```
 
-Or via PM2 (what the live demo uses):
-
-```bash
-pm2 start ecosystem.config.js
-pm2 save
-```
+`npm run start` is a plain foreground process. For a server, run it under
+whatever supervises processes there so it restarts after a crash or a reboot
+(systemd, PM2, a hosting panel). The live demo runs it as an aaPanel Node
+project that serves port 3077 behind the panel's nginx, with the project's
+"start on boot" switch on.
 
 ## Stack
 
