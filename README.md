@@ -1,6 +1,11 @@
 # Dish-Market Fit Advisor
 
-Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
+Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/), started
+on Oct 13, 2026, during the submission period.
+
+**Live demo: [qloo.store](https://qloo.store)**. Sign in with the demo
+account (one click on the sign-in page), type a dish and a city, and get a
+report in 15–40 seconds per city.
 
 ## Problem
 
@@ -81,6 +86,20 @@ Two steps, then a report that leads with the answer:
 On a phone the report splits into tabs (Verdict, Venues, Audience, Plan, and
 Menu to go back) on a bottom bar; printing always includes every section.
 
+| | |
+|---|---|
+| ![Step 1 and step 2: the dish or menu, then the cities](docs/screenshots/1-steps.png) | ![The report opens with the answer: fit, venues, core guests, price, then why and where](docs/screenshots/2-report.png) |
+| ![Audience in words, with what it shows, how to use it and what it does not mean](docs/screenshots/3-audience.png) | ![Who the venues are known to draw, counted across them](docs/screenshots/4-guests-beyond-food.png) |
+| ![Venue cards: hours by day, guests, reviews, dietary options, choose button](docs/screenshots/5-venues.png) | ![The 4-week plan, each step citing the Qloo facts it rests on](docs/screenshots/6-plan.png) |
+
+On a phone the report is split into tabs (Menu, Verdict, Venues, Audience,
+Plan) in a bottom bar:
+
+<p>
+<img src="docs/screenshots/8-phone-verdict.png" width="260" alt="Phone: the verdict tab">
+<img src="docs/screenshots/9-phone-venues.png" width="260" alt="Phone: the venues tab">
+</p>
+
 ### Adding a menu without typing it
 
 Most chefs already have the menu somewhere: on paper, in a PDF, in a Word or
@@ -118,6 +137,8 @@ analysis changes.
 - **Without a model** (none configured, or its quota spent): text sources are
   split one dish per line with prices removed, and the page says so. Photos
   and PDFs can't be read without the model.
+
+![A handwritten-style menu photo read into seven dishes, ready to check](docs/screenshots/7-menu-photo.png)
 
 Tested with a handwritten-style photo, a French PDF, Word and Excel files,
 a Russian CSV, a non-menu image, and Google's public sample spreadsheet. All
@@ -170,6 +191,90 @@ All Qloo calls go through the official hackathon endpoint
 (`https://hackathon.api.qloo.com`) using the event-issued API key, server-side
 only (see `lib/qloo.ts`). No personal data is ever sent to Qloo — only the
 free-text concept and city the user types.
+
+## One request, start to finish
+
+A real run from Oct 25, 2026, shortened. The concept was "Korean fried
+chicken with natural wine pairing" and the city was New York, NY. Every Qloo
+call goes to `https://hackathon.api.qloo.com` with the event key in the
+`x-api-key` header (left out here); no personal data is sent.
+
+**1. The agent picks the tags (6.2 s).** The model has two tools and a budget
+of 6 calls. It used 5:
+
+| Call | Qloo request | What came back |
+|---|---|---|
+| `search_tags("Korean fried chicken")` | `GET /v2/tags?filter.query=Korean fried chicken` | Korean Fried Chicken, Korean Style Fried Chicken, … |
+| `search_tags("natural wine")` | `GET /v2/tags?filter.query=natural wine` | Natural Wine, Natural Wines, Natural Wine Bar |
+| `find_venues("Korean Fried Chicken")` | `GET /v2/insights?filter.type=urn:entity:place&filter.tags=urn:tag:cuisine:qloo:korean_fried_chicken&filter.location.query=New York, NY` | 8 venues |
+| `find_venues("Korean Style Fried Chicken")` | same, other tag | 0 venues |
+| `find_venues("Natural Wine")` | same, `urn:tag:cuisine:qloo:natural_wine` | 8 venues |
+
+It chose *Korean Fried Chicken* as the primary tag and *Natural Wine* as a
+secondary signal, with the reason "Korean Fried Chicken is the core dish
+concept with plenty of matching venues in New York, paired with Natural Wine
+as a secondary tag to capture the beverage concept". The code checks that
+both ids came back from a tool. The near-duplicate *Korean Style Fried
+Chicken* had no venues, which is the dead end the venue check exists to
+avoid. The other candidates are offered on the page, with their venue counts,
+if the chef wants a different reading.
+
+**2. The pipeline collects the evidence (3 s).**
+- **Venues:** of the 8, four are open and in the city: Koko Wings,
+  Emily, bb.q Chicken NY K Town and Mad for Chicken Flushing. For each, the
+  same response carries the address, rating, price, hours, phone, review
+  keywords and tags (style, dietary options, guest groups).
+- **Audience:** one `urn:demographics` request per venue
+  (`signal.interests.entities=<venue id>`).
+- **Beyond food:** one request each for brands, TV shows, artists and
+  podcasts, seeded with the four venues plus the location. Back came The
+  Infatuation and Eater; *Master of None* and *Awkwafina Is Nora from Queens*;
+  French Montana and Dave East; *2 Dope Queens*.
+
+**3. Everything becomes numbered facts.** 36 here, each stored with the Qloo
+request it came from. For example:
+
+- `F1` Venues were found via the Qloo tag "Korean Fried Chicken"
+  (cuisine:qloo); 4 operating venue(s) matched.
+- `F3` Venue "Koko Wings" opening hours: Mon–Thu 11:00–22:30; Fri–Sat
+  11:00–23:00; Sun 11:00–22:30.
+- `F7` Venue "Koko Wings" own most-mentioned review keywords: soy garlic
+  wings (46), happy hour (24), crispy chicken (24), …
+- `F30` Across all 4 matched venues, the guest groups Qloo tags on more than
+  one venue: Young professionals (4 of 4), Groups of friends (4 of 4), …
+- `F36` Secondary concept signal "Natural Wine": 8 venue(s) in New York, NY
+  carry this Qloo tag, e.g. DiWine Natural Wine Bar & Restaurant, June,
+  The Fly.
+
+**4. The agent writes the analysis (2.5 s), citing facts.**
+- **Verdict:** *moderate* fit. "The matched venues strongly align with the
+  Korean fried chicken core concept … though none explicitly feature natural
+  wine on their menus. A pilot tasting night would successfully reach popular
+  local groups like young professionals, foodies, and groups of friends."
+  Cites F1, F5, F7, F27 and F30.
+- **Venue:** Koko Wings, "open every day of the week with evening operating
+  hours until 22:30 or 23:00 … known for Korean fried chicken, soy garlic
+  wings, and crispy chicken". Cites F2, F3, F5 and F7.
+- **Risks:** natural wine is missing at the Korean fried chicken venues
+  (F5, F19, F25, F36). bb.q Chicken and Mad for Chicken are closed on Fridays
+  and Saturdays (F17, F23).
+- **Plan:** Week 3, Mon 18:00–21:00: one tasting night at Koko Wings, a
+  quiet weekday inside its listed hours (F3). The steps that make no claim
+  about the data cite nothing.
+
+**5. The code checks the analysis before it is shown** (`lib/guards.ts`):
+- An item that cites no existing fact is dropped.
+- Any number in the verdict, the recommendation or a risk must appear in the
+  facts it cites, or the item is dropped.
+- The recommended venue must be one of the four. It must cite at least one
+  fact about itself and none about another venue.
+- A tasting slot on a closed day or outside the venue's hours is replaced by
+  one computed from those hours.
+
+On the page, each citation opens its fact and the Qloo request behind it. The owner letter is filled in
+from the venue's own data (phone, style tags), not written by the model.
+
+Total time: about 15 s, plus 3 s to resolve the city.
 
 ## The agent layer
 
@@ -385,9 +490,11 @@ seen live with `is_closed=false`, a stale flag on a shut venue.
 
 ## API rate limits
 
-The hackathon key is capped at **5 requests/second and 10,000/month**
-(confirmed from Qloo's own `x-second-ratelimit-limit` / `x-month-ratelimit-limit`
-response headers), shared across every request this server makes — regardless
+The hackathon key was capped at **5 requests/second and 10,000/month** when
+this was built; Qloo has since raised it to **10 requests/second and
+50,000/month** (both read from Qloo's own `x-second-ratelimit-limit` /
+`x-month-ratelimit-limit` response headers, the second on Oct 25, 2026). The
+cap is shared across every request this server makes — regardless
 of how many browser tabs or concurrent city comparisons triggered them.
 
 Rather than fight that with an artificial request budget, `lib/qloo.ts`
@@ -517,7 +624,8 @@ the same credentials go in the Devpost testing instructions.
 - **Limits per client address** (from `cf-connecting-ip` / `x-forwarded-for`,
   in memory, reset by a restart): 30 analyses per hour (a city comparison
   sends one per city), 20 menu reads per hour, and 10 sign-in attempts per
-  10 minutes.
+  10 minutes. The first two can be raised with `ANALYSES_PER_HOUR` and
+  `MENU_READS_PER_HOUR`, for when many people share one address.
 - **What this is and isn't:** because the demo credentials are public by
   design, the login keeps casual and automated traffic off the quota; it is
   not access control. The per-address limits are what bound abuse, and

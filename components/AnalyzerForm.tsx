@@ -48,9 +48,16 @@ export function AnalyzerForm({
   const [imported, setImported] = useState<Imported>();
   const field = useRef<HTMLTextAreaElement>(null);
 
+  /** Back to the text field, showing its first line: a list read from a menu starts at the top. */
   function showField() {
     setTab("text");
-    requestAnimationFrame(() => field.current?.focus());
+    requestAnimationFrame(() => {
+      const el = field.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(0, 0);
+      el.scrollTop = 0;
+    });
   }
 
   function handleRead(read: MenuRead, from: string) {
@@ -205,7 +212,7 @@ export function AnalyzerForm({
             ref={field}
             id="concept"
             className={`${inputClass} mt-2 resize-y text-base`}
-            rows={5}
+            rows={Math.min(12, Math.max(5, concept.split("\n").length + 1))}
             placeholder="e.g. izakaya-style small plates, or: braised short rib with miso-glazed carrots and sesame crumble, a modern bistro dish"
             value={concept}
             maxLength={MAX_CONCEPT_LENGTH}

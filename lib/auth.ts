@@ -65,6 +65,12 @@ export function clientKey(request: Request): string {
   return request.headers.get("cf-connecting-ip") ?? forwarded ?? request.headers.get("x-real-ip") ?? "unknown";
 }
 
+/** A per-hour limit from the environment: a positive whole number, or the default when unset or invalid. */
+export function limitFromEnv(value: string | undefined, fallback: number): number {
+  const n = Number(value);
+  return value && Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
 const hits = new Map<string, number[]>();
 
 /** Sliding-window limiter, in memory (a restart resets it). Returns seconds to wait if over the limit. */

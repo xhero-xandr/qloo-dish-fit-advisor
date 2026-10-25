@@ -4,6 +4,7 @@
 import {
   clientKey,
   isAuthEnabled,
+  limitFromEnv,
   rateLimit,
   requestHasSession,
 } from "./auth.ts";
@@ -11,8 +12,9 @@ import { parseDetails, validateInput, type Details } from "./input.ts";
 import { CityNotFoundError, ConceptNotFoundError } from "./tags.ts";
 
 // Per client: each analysis spends shared Qloo and language-model quota. Comparing several cities
-// sends one request per city, so this leaves room for a few comparisons an hour.
-const ANALYSES_PER_HOUR = 30;
+// sends one request per city, so this leaves room for a few comparisons an hour. Raise it with
+// ANALYSES_PER_HOUR when many people share one address (judges in one office, say).
+const ANALYSES_PER_HOUR = limitFromEnv(process.env.ANALYSES_PER_HOUR, 30);
 
 export function createAnalyzeHandler(
   build: (concept: string, city: string, details?: Details) => Promise<unknown>,

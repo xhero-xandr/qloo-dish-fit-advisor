@@ -1,7 +1,7 @@
 // The menu-reading endpoint's logic: a file in a multipart form, or a Google link in JSON. Reading the
 // dishes is passed in, so the checks can be tested without a model. Nothing the chef sends is stored.
 
-import { clientKey, isAuthEnabled, rateLimit, requestHasSession } from "./auth.ts";
+import { clientKey, isAuthEnabled, limitFromEnv, rateLimit, requestHasSession } from "./auth.ts";
 import { MAX_CONCEPT_LENGTH } from "./input.ts";
 import {
   fetchGoogleText,
@@ -14,8 +14,8 @@ import {
   type MenuSource,
 } from "./menu-source.ts";
 
-// Each read is one model call with a whole page or photo in it.
-const READS_PER_HOUR = 20;
+// Each read is one model call with a whole page or photo in it. MENU_READS_PER_HOUR overrides it.
+const READS_PER_HOUR = limitFromEnv(process.env.MENU_READS_PER_HOUR, 20);
 
 export interface MenuRead {
   dishes: Dish[];

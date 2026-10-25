@@ -105,3 +105,8 @@ test("isHttps recognises a secure request either by header or by the url", () =>
   assert.equal(auth.isHttps(new Request("https://x/")), true);
   assert.equal(auth.isHttps(new Request("http://x/")), false);
 });
+
+test("a per-hour limit from the environment must be a positive whole number", () => {
+  assert.equal(auth.limitFromEnv("120", 30), 120);
+  for (const bad of [undefined, "", "0", "-5", "2.5", "lots"]) assert.equal(auth.limitFromEnv(bad, 30), 30, String(bad));
+});
