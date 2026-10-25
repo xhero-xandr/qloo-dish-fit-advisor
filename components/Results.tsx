@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ownerLetterFor } from "@/lib/letter";
 import { AgentPanel } from "./AgentPanel";
 import { Explainers } from "./Explainers";
-import { AudienceSection } from "./AudienceSection";
+import { AudienceSection, GuestGroups } from "./AudienceSection";
 import { BriefSummary } from "./BriefSummary";
 import { Citations } from "./Citations";
 import { CulturalAffinityPanel } from "./CulturalAffinity";
@@ -164,9 +164,12 @@ export function Results({
             recommendedIndex={recommendedIndex}
           />
         ) : (
-          <p className="text-sm text-zinc-500">
-            Qloo returned no audience data for these venues.
-          </p>
+          <>
+            <p className="text-sm text-zinc-500">
+              Qloo returned no age or gender data for these venues.
+            </p>
+            <GuestGroups result={result} />
+          </>
         )}
         {result.regionInsights.length > 0 && (
           <Section

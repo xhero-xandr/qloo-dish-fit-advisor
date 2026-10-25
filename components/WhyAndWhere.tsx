@@ -95,6 +95,12 @@ export function WhyAndWhere({
               <strong className="font-semibold">Its guests:</strong> {guests}
             </p>
           )}
+          {venue.guests && venue.guests.length > 0 && (
+            <p className="text-sm">
+              <strong className="font-semibold">Known to draw:</strong>{" "}
+              {venue.guests.slice(0, 4).join(", ")}
+            </p>
+          )}
           <a
             href="#venues"
             className="no-print mt-auto pt-2 text-sm font-medium text-accent-700 underline underline-offset-2 dark:text-accent-400"

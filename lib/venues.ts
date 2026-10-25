@@ -2,6 +2,7 @@
 // state: each is tested on its own (tests/venues.test.ts).
 
 import { AGE_BUCKETS } from "./facts.ts";
+import { isCommonGuestGroup } from "./audience.ts";
 import { geoMatches } from "./location.ts";
 import type {
   CrossDomainEntity,
@@ -75,6 +76,51 @@ export function extractDietaryOptions(
   tags: { id: string; name: string; type: string }[],
 ): string[] {
   return tags.filter((t) => t.type === DIETARY_TAG_TYPE).map((t) => t.name);
+}
+
+export const GUEST_TAG_TYPE = "urn:tag:customer_identity:qloo";
+
+const MAX_GUESTS = 8;
+
+/** Who Qloo says goes to the venue ("Families", "Students", "Business professionals"), specific groups first. */
+export function extractGuests(tags: { id: string; name: string; type: string }[]): string[] {
+  const names = [...new Set(tags.filter((t) => t.type === GUEST_TAG_TYPE).map((t) => t.name.trim()))];
+  return [...names.filter((n) => !isCommonGuestGroup(n)), ...names.filter(isCommonGuestGroup)].slice(0, MAX_GUESTS);
+}
+
+// Tag types that say what a venue serves and what it feels like, in the order they are drawn from.
+// Parking, payments, accessibility, COVID rules and the like describe nothing a chef or an owner
+// would recognise as the venue's style, and the guest and dietary tags are kept separately.
+const STYLE_TAG_TYPES = [
+  "urn:tag:cuisine:qloo",
+  "urn:tag:genre:place",
+  "urn:tag:culinary_style:qloo",
+  "urn:tag:specialty_dish:place",
+  "urn:tag:menu_highlight:qloo",
+  "urn:tag:beverage_offering:qloo",
+  "urn:tag:ambience:qloo",
+  "urn:tag:decor:qloo",
+];
+// Genres nearly every place carries, so they describe nothing.
+const GENERIC_TAG = /^(place|restaurant|tourist attraction|event venue|point of interest)$/i;
+
+/** The venue's style in Qloo's tags (cuisine, dishes, drinks, ambience), one of each kind in turn so a few cover several. */
+export function vibeTagsOf(tags: { id: string; name: string; type: string }[], max = 8): string[] {
+  const byType = STYLE_TAG_TYPES.map((type) =>
+    tags.filter((t) => t.type === type && !GENERIC_TAG.test(t.name.trim())).map((t) => t.name.trim()),
+  );
+  const picked: string[] = [];
+  const seen = new Set<string>();
+  for (let round = 0; picked.length < max && byType.some((list) => list.length > round); round++) {
+    for (const list of byType) {
+      const name = list[round];
+      if (name && !seen.has(name.toLowerCase()) && picked.length < max) {
+        seen.add(name.toLowerCase());
+        picked.push(name);
+      }
+    }
+  }
+  return picked;
 }
 
 const DAYS = [

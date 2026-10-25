@@ -32,13 +32,14 @@ import {
   conceptMatchesTag,
   describeResolvedLocation,
   extractDietaryOptions,
-  DIETARY_TAG_TYPE,
+  extractGuests,
   formatHours,
   hoursByDay,
   isOperating,
   locationMismatch,
   toCulturalSignalItems,
   rankTagsForPlaceMatching,
+  vibeTagsOf,
 } from "./venues";
 import { weekWindows, type WeekWindows } from "./hours";
 import { isLlmConfigured } from "./llm";
@@ -69,6 +70,8 @@ export interface VenueCandidate {
   openingDays?: string[];
   vibeTags: string[];
   dietaryOptions: string[];
+  /** Who Qloo says goes there ("Families", "Students"); missing on results saved before it was added. */
+  guests?: string[];
   reviewKeywords: RegionInsight[];
   demographics?: DemographicsResult;
 }
@@ -460,11 +463,9 @@ async function buildPilotPackageUncached(
         imageUrl: p.properties?.image?.url,
         hours: formatHours(p.properties?.hours),
         openingDays: hoursByDay(p.properties?.hours),
-        vibeTags: (p.tags ?? [])
-          .filter((t) => t.type !== DIETARY_TAG_TYPE)
-          .slice(0, 6)
-          .map((t) => t.name),
+        vibeTags: vibeTagsOf(p.tags ?? []),
         dietaryOptions: extractDietaryOptions(p.tags ?? []),
+        guests: extractGuests(p.tags ?? []),
         reviewKeywords: [...(p.properties?.keywords ?? [])]
           .sort((a, b) => b.count - a.count)
           .slice(0, 6)

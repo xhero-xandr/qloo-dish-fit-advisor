@@ -29,7 +29,8 @@ Gemini, which is what it has been tested on:
    keyword heuristic would settle for the broad *Korean*. Code accepts only
    tag ids a Qloo tool actually returned.
 2. **Pipeline: venues and audience.** For the chosen tag, real named venues
-   (address, rating, price, hours, phone, dietary tags), each venue's
+   (address, rating, price, hours, phone, dietary tags, the guest groups
+   Qloo tags each one with), each venue's
    audience age/gender affinity (`filter.type=urn:demographics`), review
    keywords, and cross-domain affinity — brands, TV shows, artists,
    podcasts — seeded with the matched venues themselves
@@ -66,9 +67,13 @@ Two steps, then a report that leads with the answer:
   / less than the average person" (our cut-offs: ±0.05 and ±0.15), with one
   sentence on who the likely guests are and three short notes under every
   chart: what it shows, how to use it, and what it does not mean. Qloo's own
-  scores stay one click away.
-- **Venues to choose from.** Each with its hours by day, its own guests, what
-  reviews mention and its dietary options; choosing one rewrites the letter
+  scores stay one click away. Next to it, the guest groups the venues are
+  known to draw (families, students, business professionals…), with how many
+  of the venues carry each one; the groups Qloo puts on most popular places
+  (locals, foodies) come last and are marked as saying little.
+- **Venues to choose from.** Each with its hours by day, its own guests (age
+  and gender, and the groups it is known to draw), what reviews mention and
+  its dietary options; choosing one rewrites the letter
   to its owner.
 - **Plan, judging and letter.** The 4-week plan, how to judge the night, a
   tasting brief and the outreach letter, ready to copy or save as PDF.
@@ -148,6 +153,8 @@ audience data, and a plan — no sales call required.
 | Audience profile | `GET /v2/insights?filter.type=urn:demographics` | Age/gender affinity skew for a specific venue's audience |
 | Cross-domain affinity | `GET /v2/insights?filter.type=urn:entity:brand\|tv_show\|artist\|podcast` with `signal.interests.entities` (the matched venues) + `signal.location.query` | What the matched venues' own audience tends toward in other categories entirely |
 | Dietary signals | `tags` on each matched venue (`urn:tag:dietary_option:qloo:*`) | Vegan/vegetarian/gluten-free/halal/etc. flags Qloo already attaches to a venue, surfaced as badges and given to the agent as facts |
+| Guest groups | `tags` on each matched venue (`urn:tag:customer_identity:qloo:*`) | Who Qloo says the venue is popular with (families, students, business professionals, sports fans…): shown per venue and counted across them, and given to the agent as facts so it can say whom a tasting night would reach |
+| Venue style | `tags` on each matched venue: cuisine, genre, culinary style, signature dishes, menu highlights, drinks, ambience, decor | What the venue serves and feels like, for the agent's fit judgement and the letter to the owner. Parking, payment, accessibility and COVID-era tags are left out because they say nothing about style |
 
 The cross-domain step is the part that actually exercises Qloo's taste
 **graph** rather than a single-category lookup. How it's seeded matters a
@@ -517,6 +524,24 @@ the same credentials go in the Devpost testing instructions.
   Cloudflare in front of the site handles bots.
 
 ## Possible next steps
+
+- **Menu for a crowd.** Turn the flow around: a group and a city in, the
+  cuisines and dishes that group's places are known for out. Useful to
+  caterers, office and campus canteens, senior living and event organisers.
+  We tested which Qloo signal can carry it (about 120 calls, Austin, Chicago
+  and Seattle):
+  - **What works:** venues filtered by a guest tag (`customer_identity`) give
+    distinct, plausible profiles once chains are counted once. Seniors get
+    diners, comfort food and Southern dishes; students get hot dogs, ramen
+    and Korean; business professionals get steakhouses and fine dining;
+    sports fans get wings and pub food.
+  - **What doesn't:** the `signal.demographics.audiences` signal
+    (professions, life stage) re-ranks venues but not toward the group, and
+    its weight parameter had no effect.
+  - **What's missing:** some groups are sparse (12 senior-tagged venues
+    across three cities). Qloo has nothing on occupations such as
+    construction crews, or on health conditions; those constraints would
+    come from the chef or the model, labelled as such.
 
 - **Menu notes that adapt, not repeat.** Today they often restate what the
   venue already sells. Telling the agent to adapt the concept to the venue

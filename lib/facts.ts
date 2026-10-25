@@ -2,6 +2,7 @@
 // citations. Pure: the same inputs always give the same fact list.
 
 import type { AgentTagDecision, Fact } from "./agent";
+import { guestGroupCounts } from "./audience.ts";
 import type { DemographicsResult } from "./qloo";
 import type { Details } from "./input.ts";
 import type { FactSource, QlooRequest } from "./provenance.ts";
@@ -117,6 +118,12 @@ export function buildFacts(input: {
         v.name,
         fromSearch,
       );
+    if (v.guests && v.guests.length > 0)
+      add(
+        `Venue "${v.name}" guests, as Qloo tags them (who the venue is known to be popular with): ${v.guests.join(", ")}.`,
+        v.name,
+        fromSearch,
+      );
     if (v.reviewKeywords.length > 0) {
       add(
         `Venue "${v.name}" own most-mentioned review keywords: ${v.reviewKeywords.map((k) => `${k.keyword} (${k.mentions})`).join(", ")}.`,
@@ -149,6 +156,19 @@ export function buildFacts(input: {
           .filter((v) => v.demographics)
           .map((v) => sources?.demographics(v.entityId)),
         "Averaged here across these requests, one per venue.",
+      ),
+    );
+  }
+  const guestGroups = guestGroupCounts(input.venues);
+  if (guestGroups.length > 0) {
+    add(
+      `Across all ${n} matched venues, the guest groups Qloo tags on more than one venue: ${guestGroups
+        .map(([group, count]) => `${group} (${count} of ${n})`)
+        .join(", ")}.`,
+      undefined,
+      from(
+        [venueSearch],
+        "Guest tags from the venue search, counted here across the matched venues.",
       ),
     );
   }

@@ -3,6 +3,8 @@ import {
   coreAgeLabel,
   describeAudience,
   genderLean,
+  guestGroupCounts,
+  isCommonGuestGroup,
   levelOf,
   MORE,
   MUCH,
@@ -127,6 +129,8 @@ export function AudienceSection({
         />
       </section>
 
+      <GuestGroups result={result} />
+
       {withData.length > 0 && (
         <section className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
           <div>
@@ -162,6 +166,11 @@ export function AudienceSection({
                   <p className="text-sm text-zinc-500">
                     {genderLean(v.demographics)}
                   </p>
+                  {v.guests && v.guests.length > 0 && (
+                    <p className="mt-1.5 text-xs text-zinc-600 dark:text-zinc-400">
+                      Known to draw: {v.guests.slice(0, 3).join(", ")}
+                    </p>
+                  )}
                 </li>
               ) : null,
             )}
@@ -242,5 +251,71 @@ export function AudienceSection({
         </section>
       )}
     </div>
+  );
+}
+
+/** Who Qloo says the matched venues are popular with: Qloo's own labels, counted across the venues. */
+export function GuestGroups({ result }: { result: PilotPackage }) {
+  const n = result.venues.length;
+  const groups: [string, number][] =
+    n === 1
+      ? (result.venues[0].guests ?? []).map((g) => [g, 1])
+      : guestGroupCounts(result.venues);
+  if (groups.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <div>
+        <h2 className="text-lg font-semibold">
+          Who {n === 1 ? "this venue is" : "these venues are"} known to draw
+        </h2>
+        <p className="mt-0.5 text-sm text-zinc-500">
+          Qloo&apos;s labels for the guests each venue is popular with
+          {n > 1 ? ", and on how many of the venues each one appears" : ""}.
+        </p>
+      </div>
+      <ul className="flex flex-wrap gap-2">
+        {groups.map(([group, count]) => (
+          <li
+            key={group}
+            className={`rounded-full px-3 py-1 text-sm ${
+              isCommonGuestGroup(group)
+                ? "border border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400"
+                : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+            }`}
+          >
+            {group}
+            {n > 1 && (
+              <span className="ml-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                {count} of {n}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <Explainers
+        shows={
+          <>
+            Groups Qloo tags these venues as popular with, such as families,
+            students or business professionals. It describes the venues,
+            not your dish.
+          </>
+        }
+        use={
+          <>
+            Check that the people you cook for are on the list, then choose a
+            venue that draws them (each venue&apos;s own groups are under
+            Venues). If they are missing, the venues may be right for the dish
+            but wrong for your guests.
+          </>
+        }
+        notMean={
+          <>
+            It is not a headcount or a share of guests. &quot;Locals&quot; and
+            &quot;Foodies&quot; are tagged on most popular places, so they say
+            little on their own.
+          </>
+        }
+      />
+    </section>
   );
 }

@@ -51,6 +51,7 @@ const full = {
   hours: "Tue–Thu 16:30–21:00",
   dietaryOptions: ["Vegetarian", "Vegan"],
   vibeTags: ["Wine", "Date night"],
+  guests: ["Business professionals", "Couples"],
   reviewKeywords: [{ keyword: "yakitori", mentions: 110 }, { keyword: "sake", mentions: 46 }],
   demographics: { age: { "25_to_29": 0.18, "55_and_older": -0.2 }, gender: { male: 0.05, female: -0.05 } },
 } as never;
@@ -65,6 +66,7 @@ test("a venue with every field gets one sentence per field, naming the values", 
     'Venue "Fukumoto" opening hours: Tue–Thu 16:30–21:00.',
     'Venue "Fukumoto" dietary options listed by Qloo: Vegetarian, Vegan.',
     'Venue "Fukumoto" Qloo tags: Wine, Date night.',
+    'Venue "Fukumoto" guests, as Qloo tags them (who the venue is known to be popular with): Business professionals, Couples.',
     'Venue "Fukumoto" own most-mentioned review keywords: yakitori (110), sake (46).',
     'Venue "Fukumoto" audience: age affinity 25–29 +0.18, 55 and younger -0.20; gender affinity male +0.05, female -0.05 (Qloo affinity vs. general population).'.replace("55 and younger", "55+"),
   ]);
@@ -247,4 +249,13 @@ test("the chef's requests are answered from the same request they were checked a
   assert.deepEqual(asked[0].source?.requests, [sources.places("t")]);
   assert.match(asked[0].source?.note ?? "", /checked here/);
   assert.deepEqual(asked[2].source?.requests, [sources.demographics("E1")]);
+});
+
+test("guest groups shared by several venues become one group fact; a group on one venue does not", () => {
+  const a = { ...(full as object), name: "A", guests: ["Students", "Families"] } as never;
+  const b = { ...(full as object), name: "B", guests: ["Students", "Tourists"] } as never;
+  const t = texts({ city: "Austin", primaryTag: tag, secondary: [], venues: [a, b], regionInsights: [] });
+  assert.ok(t.includes("Across all 2 matched venues, the guest groups Qloo tags on more than one venue: Students (2 of 2)."));
+  const one = texts({ city: "Austin", primaryTag: tag, secondary: [], venues: [bare], regionInsights: [] });
+  assert.ok(!one.some((x) => x.includes("guest")));
 });

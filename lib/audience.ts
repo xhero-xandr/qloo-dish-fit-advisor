@@ -105,3 +105,27 @@ export function describeAudience(
   const lean = genderLean(scores);
   return `${ages} ${lean === "men and women alike" ? "Men and women about equally." : `Somewhat ${lean}.`}`;
 }
+
+// Qloo tags most popular venues with these guest groups, so on their own they say little about a venue.
+const COMMON_GUEST_GROUPS = new Set(["locals", "foodies", "regulars", "groups of friends", "couples"]);
+
+export function isCommonGuestGroup(group: string): boolean {
+  return COMMON_GUEST_GROUPS.has(group.trim().toLowerCase());
+}
+
+/** Guest groups Qloo tags on at least two of the venues, with how many venues each: most venues first, the common groups last. */
+export function guestGroupCounts(
+  venues: { guests?: string[] }[],
+): [string, number][] {
+  const counts = new Map<string, number>();
+  for (const v of venues)
+    for (const g of new Set(v.guests ?? []))
+      counts.set(g, (counts.get(g) ?? 0) + 1);
+  return [...counts]
+    .filter(([, c]) => c >= 2)
+    .sort(
+      (a, b) =>
+        Number(isCommonGuestGroup(a[0])) - Number(isCommonGuestGroup(b[0])) ||
+        b[1] - a[1],
+    );
+}

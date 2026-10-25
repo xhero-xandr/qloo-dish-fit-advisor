@@ -604,3 +604,43 @@ test("hoursByDay lists Monday to Sunday, marking closed and unknown days", () =>
   assert.equal(hoursByDay(undefined), undefined);
   assert.equal(hoursByDay({}), undefined);
 });
+
+import { extractGuests, vibeTagsOf } from "../lib/venues.ts";
+
+const guestTag = (name: string) => ({ id: `urn:tag:customer_identity:qloo:${name.toLowerCase().replace(/ /g, "_")}`, name, type: "urn:tag:customer_identity:qloo" });
+
+test("guests come from Qloo's customer tags, specific groups before the ones most places get", () => {
+  const tags = [
+    guestTag("Locals"),
+    guestTag("Families"),
+    { id: "urn:tag:genre:place:diner", name: "Diner", type: "urn:tag:genre:place" },
+    guestTag("Foodies"),
+    guestTag("Students"),
+    guestTag("Families"),
+  ];
+  assert.deepEqual(extractGuests(tags), ["Families", "Students", "Locals", "Foodies"]);
+  assert.deepEqual(extractGuests([]), []);
+});
+
+test("the style tags come from what the venue serves and feels like, one kind at a time", () => {
+  const t = (type: string, name: string) => ({ id: `${type}:${name}`, name, type: `urn:tag:${type}` });
+  const tags = [
+    t("category:place", "Place"),
+    t("genre:place", "Restaurant"),
+    t("genre:place", "Korean"),
+    t("genre:place", "Small plates"),
+    t("not_for_display:place", "Staff required to disinfect surfaces between visits"),
+    t("payments:place", "Price level"),
+    t("age_range:qloo", "25 29"),
+    t("parking:place", "Free street parking"),
+    guestTag("Families"),
+    t("dietary_option:qloo", "Vegan"),
+    t("cuisine:qloo", "Korean"),
+    t("menu_highlight:qloo", "Kalbi taco"),
+    t("ambience:qloo", "Lively"),
+    t("beverage_offering:qloo", "Wine"),
+  ];
+  assert.deepEqual(vibeTagsOf(tags), ["Korean", "Kalbi taco", "Wine", "Lively", "Small plates"]);
+  assert.deepEqual(vibeTagsOf(tags, 3), ["Korean", "Kalbi taco", "Wine"]);
+  assert.equal(vibeTagsOf(Array.from({ length: 12 }, (_, i) => t("ambience:qloo", `Mood ${i}`))).length, 8);
+});

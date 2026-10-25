@@ -148,6 +148,12 @@ export function VenueCard({
         </div>
       )}
 
+      {venue.guests && venue.guests.length > 0 && (
+        <p className="text-sm">
+          <span className="text-zinc-500">Known to draw:</span>{" "}
+          {venue.guests.join(", ")}
+        </p>
+      )}
       {venue.reviewKeywords.length > 0 && (
         <p className="text-sm">
           <span className="text-zinc-500">Reviews mention:</span>{" "}

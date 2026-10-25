@@ -258,6 +258,7 @@ You get a numbered list of facts, every one taken from Qloo's API. Use ONLY thes
 - Qloo provides no foot-traffic, sales, revenue, menu-price, wine-list, or capacity data. Never claim or imply any of these.
 - Never invent venues, numbers, dates, or audience traits not in the facts. If the facts can't support an item, leave it out.
 - Demographic scores are affinity deltas vs. the general population (e.g. +0.20 = over-indexes), not shares of customers.
+- Guest tags ("Families", "Students", "Business professionals") are Qloo's labels for who a venue is known to be popular with, not counts or shares. Use them to say whom a tasting night there would reach.
 - A claim about one venue must cite that venue's own facts. Facts marked "across all matched venues combined" describe the group, never a single venue.
 - Judge fit honestly. Compare the concept's style and format with each venue's overall profile — its cuisine, signature dishes, and drinks across its own tags and review keywords — not a single literal word match. If the venues are known for a different style than the concept (e.g. Detroit-style pizza vs. a Neapolitan concept, ramen vs. izakaya), fit is weak or moderate, and you must say so. A weak verdict is a useful answer — do not default to optimism.
 - Recommend the venue whose overall profile best matches the concept's style and that is open in the evening (a venue open only at midday is a weak partner for a tasting night). If none really matches, still name the closest one and state the mismatch as a risk.

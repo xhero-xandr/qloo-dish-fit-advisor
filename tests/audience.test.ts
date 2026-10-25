@@ -104,3 +104,32 @@ test("the sentence names who likes the places more and less", () => {
     "No age group likes these venues clearly more or less than the average person. Men and women about equally.",
   );
 });
+
+import { guestGroupCounts } from "../lib/audience.ts";
+
+test("guest groups are counted once per venue and kept only when two or more venues share them", () => {
+  assert.deepEqual(
+    guestGroupCounts([
+      { guests: ["Families", "Students", "Families"] },
+      { guests: ["Families", "Tourists"] },
+      { guests: ["Students", "Families"] },
+      {},
+    ]),
+    [
+      ["Families", 3],
+      ["Students", 2],
+    ],
+  );
+  assert.deepEqual(guestGroupCounts([{ guests: ["Seniors"] }]), []);
+});
+
+test("groups Qloo puts on most venues come after the specific ones, whatever their counts", () => {
+  assert.deepEqual(
+    guestGroupCounts([
+      { guests: ["Locals", "Foodies", "Students"] },
+      { guests: ["Locals", "Foodies", "Students"] },
+      { guests: ["Locals", "Foodies"] },
+    ]).map(([g]) => g),
+    ["Students", "Locals", "Foodies"],
+  );
+});
